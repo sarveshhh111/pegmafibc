@@ -312,9 +312,7 @@ async def generate_gemini_image(config: FIBCBagConfig, prompt: str) -> dict:
             
             models_to_try = [
                 "gemini-2.5-flash-image",
-                "gemini-3.1-flash-image",
-                "gemini-3-pro-image",
-                "gemini-2.5-flash"
+                "gemini-3.1-flash-image"
             ]
 
             # Prepare multimodal reference image inputs
