@@ -320,22 +320,23 @@ async def generate_gemini_image(config: FIBCBagConfig, prompt: str) -> dict:
             # Prepare multimodal reference image inputs
             contents_payload = []
             
-            # Attach official reference image asset from backend/app/assets/
-            ref_path = os.path.join(os.path.dirname(__file__), "assets", "pegma_logo_ref.jpg")
-            if os.path.exists(ref_path):
-                with open(ref_path, "rb") as f:
-                    ref_bytes = f.read()
-                    contents_payload.append(
-                        types.Part.from_bytes(data=ref_bytes, mime_type="image/jpeg")
-                    )
-                    print(f"[PEGMA GEMINI SERVICE] Attached reference image asset ({len(ref_bytes)} bytes) to Gemini payload!")
+            try:
+                ref_path = os.path.join(os.path.dirname(__file__), "assets", "pegma_logo_ref.jpg")
+                if os.path.exists(ref_path):
+                    with open(ref_path, "rb") as f:
+                        ref_bytes = f.read()
+                        contents_payload.append(
+                            types.Part.from_bytes(data=ref_bytes, mime_type="image/jpeg")
+                        )
+            except Exception as ref_err:
+                print(f"[PEGMA GEMINI SERVICE] Reference image load note: {ref_err}")
 
             contents_payload.append(
-                f"Generate a realistic 3D studio product photograph matching the product brand logo and style from the reference image, adhering strictly to these specifications: {prompt}"
+                f"Generate a realistic 3D studio product photograph of a white FIBC bulk bag, adhering strictly to these specifications: {prompt}"
             )
 
             for model_name in models_to_try:
-                print(f"[PEGMA GEMINI SERVICE] Calling Google GenAI SDK with model '{model_name}' & multimodal reference image...")
+                print(f"[PEGMA GEMINI SERVICE] Calling Google GenAI SDK with model '{model_name}'...")
                 try:
                     res = client.models.generate_content(
                         model=model_name,
@@ -360,6 +361,31 @@ async def generate_gemini_image(config: FIBCBagConfig, prompt: str) -> dict:
                                 }
                 except Exception as model_err:
                     print(f"[PEGMA GEMINI SERVICE] Model '{model_name}' failed: {model_err}")
+                    # Secondary try with plain text prompt string
+                    try:
+                        res = client.models.generate_content(
+                            model=model_name,
+                            contents=f"Generate a realistic 3D studio product photograph of a white FIBC bulk bag matching specs: {prompt}"
+                        )
+                        if hasattr(res, 'candidates') and res.candidates:
+                            for part in res.candidates[0].content.parts:
+                                if hasattr(part, 'inline_data') and part.inline_data:
+                                    image_bytes = part.inline_data.data
+                                    base64_str = base64.b64encode(image_bytes).decode("utf-8")
+                                    mime = getattr(part.inline_data, 'mime_type', 'image/jpeg')
+                                    image_url = f"data:{mime};base64,{base64_str}"
+                                    latency = round(time.time() - start_time, 2)
+                                    print(f"[PEGMA GEMINI SERVICE] SUCCESS via {model_name} (text fallback) in {latency}s!")
+                                    return {
+                                        "image_url": image_url,
+                                        "exploded_image_url": exploded_url,
+                                        "exploded_prompt": exploded_prompt,
+                                        "model_used": model_name,
+                                        "latency": latency,
+                                        "is_fallback": False
+                                    }
+                    except Exception as text_err:
+                        print(f"[PEGMA GEMINI SERVICE] Plain text fallback for '{model_name}' failed: {text_err}")
 
         except Exception as e:
             print(f"[PEGMA GEMINI SERVICE] Google GenAI SDK error: {e}")
