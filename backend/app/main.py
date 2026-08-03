@@ -45,5 +45,18 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/api/debug-env")
+def debug_env():
+    import os
+    from app.config import settings
+    k = os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
+    if k:
+        k = k.strip().strip('"').strip("'")
+    return {
+        "gemini_key_detected": bool(k and len(k) > 5),
+        "key_length": len(k) if k else 0,
+        "key_prefix": k[:4] + "..." if (k and len(k) > 4) else "NOT_SET"
+    }
+
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
