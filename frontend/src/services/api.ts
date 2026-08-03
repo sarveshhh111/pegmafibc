@@ -21,14 +21,30 @@ const apiClient = axios.create({
 
 export const generateBagImage = async (config: FIBCBagConfig, sessionId = "default"): Promise<GenerationResponse> => {
   try {
-    const response = await apiClient.post<GenerationResponse>('/generate', {
-      config,
-      session_id: sessionId
+    const targetUrl = `${API_BASE_URL.replace(/\/$/, '')}/generate`;
+    console.log("[PEGMA API] Sending generation request to:", targetUrl);
+
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        config,
+        session_id: sessionId
+      })
     });
-    return response.data;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: GenerationResponse = await response.json();
+    console.log("[PEGMA API] Generation SUCCESS! Model used:", data.model_used);
+    return data;
   } catch (error) {
-    console.warn("Backend API error or offline, generating high-fidelity fallback...", error);
-    // Client-side SVG fallback if backend unreachable
+    console.warn("[PEGMA API] Fetch to Render backend encountered issue, using SVG visualizer:", error);
     const svgUrl = generateClientSvg(config);
     return {
       image_url: svgUrl,
