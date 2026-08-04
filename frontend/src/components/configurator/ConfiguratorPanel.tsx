@@ -156,6 +156,7 @@ export const ConfiguratorPanel: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2">
             {[
+              { label: 'None of These', desc: 'Standard bulk bag construction without specific panel/baffle requirements' },
               { label: 'U-Panel', desc: 'Single U-shaped body panel, two vertical side seams' },
               { label: '4-Panel', desc: 'Heavy duty, four separate side panels for maximum cubic form' },
               { label: 'Circular / Tubular', desc: 'Seamless circular woven body, zero vertical side seams' },

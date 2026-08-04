@@ -3,70 +3,75 @@ from app.schemas import FIBCBagConfig
 def build_gemini_prompt(config: FIBCBagConfig) -> str:
     """
     Ultra-crisp, high-impact prompt engine for Google Gemini API.
-    Uses mid-air suspended product elevation so bottom discharge spouts are 100% visible beneath the base.
+    Guarantees exact selection matching and mid-air suspended product elevation
+    so bottom discharge spouts are 100% visible beneath the base.
     """
     
-    # 1. Bag Type
-    bag_type = (config.bagType or "U-Panel").strip()
+    # 1. Bag Construction
+    raw_type = (config.bagType or "U-Panel").strip()
+    if raw_type.lower() in ["none of these", "none", "standard"]:
+        bag_type = "standard rectangular FIBC bulk bag"
+    else:
+        bag_type = f"{raw_type} FIBC bulk bag"
 
-    # 2. Fabric Color & GSM
+    # 2. Specs
     color = (config.fabricColor or "White").strip()
+    capacity = (config.capacity or "1000 kg").strip()
     gsm = (config.gsm or "180 GSM").strip()
 
     # 3. Loops (STRICT COLOR & ATTACHMENT)
     l_type = (config.loopType or "Cross Corner").strip()
-    l_color = (config.loopColor or "Blue").upper()
-    loop_str = f"Four heavy-duty {l_color} woven webbing lifting loops attached in {l_type} style at top corners."
+    l_color = (config.loopColor or "Blue").strip()
+    loop_str = f"4 heavy-duty {l_color} woven webbing loops in {l_type} style attached at top corners."
 
-    # 4. Top Opening
+    # 4. Top Feature
     top = (config.top or "Duffle Top").strip()
-    top_str = f"Top feature: {top} skirt with drawstring tie."
+    top_str = f"Top feature: {top}."
 
-    # 5. Bottom Discharge (SUSPENDED MID-AIR ELEVATION FOR 100% BASE SPOUT VISIBILITY)
+    # 5. Bottom Feature (Mid-air suspended elevation so bottom spout hangs centered below base)
     bottom = (config.bottom or "Discharge Spout").strip()
-    if "Spout" in bottom or "Discharge" in bottom:
+    if "spout" in bottom.lower() or "discharge" in bottom.lower():
         bottom_str = (
-            "THE BAG IS SUSPENDED IN MID-AIR BY ITS TOP LOOPS, ELEVATING THE BASE OFF THE GROUND. "
-            "PROMINENT BOTTOM FEATURE: A cylindrical discharge spout hangs down cleanly from the EXACT CENTER BASE PANEL beneath the bag, tied tightly with a red cord."
+            "BAG IS SUSPENDED IN MID-AIR BY ITS TOP LOOPS FOR 100% BASE CLEARANCE. "
+            f"Bottom feature: A prominent {bottom} hangs cleanly down from the EXACT CENTER BASE PANEL underneath."
         )
     else:
-        bottom_str = "Flat closed bottom base resting evenly on a wooden pallet."
+        bottom_str = f"Bottom feature: Closed flat base panel ({bottom})."
 
     # 6. Printing
     print_text = (config.printing or "PEGMA").strip()
     print_color = (config.printingColor or "Red").strip()
-    print_str = f"Printed '{print_text}' logo in bold {print_color} ink on center front." if print_text.lower() != "no printing" else ""
+    if print_text.lower() not in ["no printing", "none", "no logo"]:
+        print_str = f"Printed brand logo '{print_text}' in bold {print_color} ink on center front panel."
+    else:
+        print_str = "Plain fabric without printing."
 
-    # 7. Electrostatic Safety (Only if non-default)
+    # 7. Electrostatic Safety
     electro = (config.electrostaticType or "Type A").strip()
-    electro_str = "Interwoven black conductive carbon thread grid with yellow grounding tabs." if "Type C" in electro else ""
+    electro_str = "Type C Electrostatic Safety: Interwoven conductive carbon thread grid with grounding tab." if "Type C" in electro else ""
 
-    # 8. Inner Liner (Only if non-default)
+    # 8. Inner Liner
     liner = (config.linerType or "No Liner").strip()
-    liner_str = f"Inner barrier liner: {liner}." if liner != "No Liner" else ""
+    liner_str = f"Fitted with {liner} inner barrier." if liner and liner != "No Liner" else ""
 
-    # 9. Extra Adds / Accessories
+    # 9. Extra Specifications
     accs = config.accessories or []
-    acc_str = f"Specs: {', '.join(accs)}." if accs else ""
+    acc_str = f"Specifications: {', '.join(accs)}." if accs else ""
 
-    # 10. Studio Camera & Render Directives
-    camera_str = "Studio shot, light gray background (#F7F8FA), soft neutral lighting, 8k resolution, razor-sharp focus."
-
-    # Compile Crisp, Short, Punchy Prompt
-    parts = [
-        f"Commercial studio product photograph of a {config.capacity} {bag_type} FIBC bulk bag.",
-        f"Material: High-tenacity {color} woven polypropylene fabric ({gsm}).",
-        electro_str,
-        liner_str,
+    # Compile Ultra-Crisp, Direct Visual Directives
+    prompt_components = [
+        f"Commercial studio product photograph of a {capacity} SWL {color} {bag_type} ({gsm}).",
         loop_str,
         top_str,
-        bottom_str,  # Mid-air suspended bottom spout
+        bottom_str,
         print_str,
+        electro_str,
+        liner_str,
         acc_str,
-        camera_str
+        "Studio lighting, light gray studio background (#F8FAFC), 8k resolution, photorealistic industrial finish."
     ]
 
-    clean_prompt = " ".join([p.strip() for p in parts if p.strip()])
+    clean_prompt = " ".join([c.strip() for c in prompt_components if c.strip()])
     return clean_prompt
 
 
@@ -74,8 +79,9 @@ def build_exploded_view_prompt(config: FIBCBagConfig) -> str:
     """
     Crisp CAD Exploded Assembly View prompt.
     """
-    bag_type = config.bagType or "U-Panel"
-    loop_color = (config.loopColor or "Blue").upper()
+    raw_type = (config.bagType or "U-Panel").strip()
+    bag_type = "Standard FIBC" if raw_type.lower() in ["none of these", "none"] else raw_type
+    loop_color = (config.loopColor or "Blue").strip()
     fabric_color = config.fabricColor or "White"
     liner = config.linerType or "PE Liner"
     print_text = config.printing or "PEGMA"
