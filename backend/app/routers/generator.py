@@ -11,7 +11,7 @@ from app.models import BagConfigurationHistory, PromptLog, ApiUsageCounter
 router = APIRouter(prefix="", tags=["Generator"])
 
 @router.post("/generate", response_model=GenerationResponse)
-async def generate_fibc_image(
+def generate_fibc_image(
     payload: GenerationRequest,
     db: Session = Depends(get_db)
 ):
