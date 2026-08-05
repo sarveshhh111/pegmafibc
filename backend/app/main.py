@@ -56,6 +56,20 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/api/test-history")
+def test_history():
+    import traceback
+    from app.database import SessionLocal
+    from app.models import BagConfigurationHistory
+    from app.schemas import HistoryItemResponse
+    try:
+        db = SessionLocal()
+        items = db.query(BagConfigurationHistory).limit(10).all()
+        result = [HistoryItemResponse.model_validate(it).model_dump() for it in items]
+        return {"success": True, "count": len(result), "items": result}
+    except Exception as e:
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
 @app.get("/api/test-generate")
 def test_generate():
     import traceback
