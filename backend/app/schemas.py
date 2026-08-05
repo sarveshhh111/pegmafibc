@@ -17,13 +17,13 @@ class FIBCBagConfig(BaseModel):
     accessories: List[str] = Field(default_factory=lambda: ["PE Liner", "Document Pouch"], description="Specialized features/add-ons")
     
     # Extended product list attributes
-    electrostaticType: Optional[str] = "Type A"
-    siftProofing: Optional[str] = "Standard Stitching"
+    electrostaticType: Optional[str] = "Not Selected"
+    siftProofing: Optional[str] = "Not Selected"
     baffleType: Optional[str] = "Standard (No Baffles)"
-    linerType: Optional[str] = "Standard PE Liner"
-    linerRequired: Optional[str] = "Yes"
-    linerConstruction: Optional[str] = "Loose Liner"
-    linerMaterial: Optional[str] = "Standard PE"
+    linerType: Optional[str] = "Not Selected"
+    linerRequired: Optional[str] = "Not Selected"
+    linerConstruction: Optional[str] = "Not Selected"
+    linerMaterial: Optional[str] = "Not Selected"
     logoImage: Optional[str] = None
     logoFileName: Optional[str] = None
 
