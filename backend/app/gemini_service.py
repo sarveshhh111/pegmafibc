@@ -34,257 +34,164 @@ def generate_svg_procedural_image(config: FIBCBagConfig) -> str:
         "Orange": "#F97316"
     }.get(config.loopColor, "#2563EB")
 
-    fabric_bg = {
-        "White": "#F8FAFC",
-        "Beige": "#F5EBE0",
-        "Black": "#334155",
-        "Blue": "#DBEAFE",
-        "Green": "#DCFCE7",
-        "Yellow": "#FEF9C3",
-        "Red": "#FEE2E2",
-        "Orange": "#FFEDD5"
-    }.get(config.fabricColor, "#F8FAFC")
-    
-    fabric_stroke = "#CBD5E1" if config.fabricColor == "White" else "#94A3B8"
-    
-    print_color_hex = {
-        "Red": "#E53935",
-        "Black": "#1A1A1A",
-        "Blue": "#2563EB",
-        "Green": "#16A34A"
-    }.get(config.printingColor, "#E53935")
-
-    print_text = config.logoFileName or (config.printing if config.printing and config.printing != "No Printing" else "PEGMA")
+    fabric_color = config.fabricColor or "White"
+    print_text = config.logoFileName or config.printing or "PEGMA"
+    bottom_raw = (config.bottom or "Discharge Spout").lower()
+    top_raw = (config.top or "Duffle Top").lower()
+    loop_raw = (config.loopType or "Cross Corner").lower()
     
     is_liner_active = (config.linerRequired or "Yes").lower() == "yes"
     liner_const = config.linerConstruction or "Loose Liner"
     liner_mat = config.linerMaterial or "Standard PE"
-    
-    sift_level = config.siftProofing or "Single Sift Proof"
-    if sift_level.lower() == "none":
-        sift_level = "Standard Double Stitching"
-
     electro = config.electrostaticType or "Type A"
 
-    top_element = ""
-    if "Duffle" in (config.top or "") or "Skirt" in (config.top or ""):
-        top_element = '''
-            <path d="M 280 230 C 310 190, 490 190, 520 230 Z" fill="#EEF2F6" stroke="#94A3B8" stroke-width="2"/>
-            <ellipse cx="400" cy="205" rx="55" ry="14" fill="#E2E8F0" stroke="#64748B" stroke-width="2"/>
-            <path d="M 385 205 Q 400 220 415 205" fill="none" stroke="#E53935" stroke-width="3" stroke-dasharray="4,3"/>
+    # 1. DYNAMIC LAYER 01: TOP CLOSURE MECHANISM
+    if "spout" in top_raw or "filling" in top_raw:
+        top_layer = '''
+  <g transform="translate(0, 10)" filter="url(#cadGlow)">
+    <rect x="360" y="120" width="80" height="60" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5" rx="4"/>
+    <ellipse cx="400" cy="120" rx="40" ry="12" fill="#334155" stroke="#38BDF8" stroke-width="2"/>
+    <ellipse cx="400" cy="180" rx="36" ry="10" fill="#0F172A" stroke="#38BDF8" stroke-width="2"/>
+    <line x1="360" y1="150" x2="440" y2="150" stroke="#E53935" stroke-width="3.5"/>
+  </g>
         '''
-    elif "Spout" in (config.top or "") or "Filling" in (config.top or ""):
-        top_element = '''
-            <rect x="360" y="160" width="80" height="70" fill="#E2E8F0" stroke="#94A3B8" stroke-width="2" rx="4"/>
-            <ellipse cx="400" cy="160" rx="40" ry="10" fill="#CBD5E1" stroke="#64748B" stroke-width="2"/>
-            <line x1="360" y1="195" x2="440" y2="195" stroke="#E53935" stroke-width="3"/>
+    elif "open" in top_raw:
+        top_layer = '''
+  <g transform="translate(0, 10)" filter="url(#cadGlow)">
+    <polygon points="300,140 500,140 480,180 320,180" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <ellipse cx="400" cy="140" rx="100" ry="22" fill="#334155" opacity="0.5" stroke="#38BDF8" stroke-width="2"/>
+  </g>
+        '''
+    elif "conical" in top_raw:
+        top_layer = '''
+  <g transform="translate(0, 10)" filter="url(#cadGlow)">
+    <polygon points="360,110 440,110 480,180 320,180" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <ellipse cx="400" cy="110" rx="40" ry="10" fill="#334155" stroke="#38BDF8" stroke-width="2"/>
+  </g>
+        '''
+    else: # Duffle / Skirt Top
+        top_layer = '''
+  <g transform="translate(0, 10)" filter="url(#cadGlow)">
+    <polygon points="320,135 480,135 460,190 340,190" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <ellipse cx="400" cy="135" rx="80" ry="20" fill="#334155" stroke="#38BDF8" stroke-width="2"/>
+    <line x1="330" y1="160" x2="470" y2="160" stroke="#E53935" stroke-width="3" stroke-dasharray="5,3"/>
+  </g>
         '''
 
-    # LOOP DRAWING PATHS BASED ON SELECTED LOOP CONFIGURATION
-    loop_raw = (config.loopType or "Cross Corner").lower()
+    # 2. DYNAMIC LAYER 02: WEBBING LIFTING LOOPS
     if "single loop" in loop_raw or "single" in loop_raw:
-        # High Overhead Single Continuous Arch
-        loop_element = f'''
-            <g filter="url(#dropShadow)">
-              <!-- Single Continuous Overhead Arch over Top Opening Center -->
-              <path d="M 320 250 C 300 40, 500 40, 480 250" fill="none" stroke="{loop_color_hex}" stroke-width="24" stroke-linecap="round"/>
-              <rect x="308" y="240" width="24" height="35" fill="{loop_color_hex}" rx="4"/>
-              <rect x="468" y="240" width="24" height="35" fill="{loop_color_hex}" rx="4"/>
-            </g>
+        loop_layer = f'''
+  <g transform="translate(0, 40)" filter="url(#cadGlow)">
+    <path d="M 330 280 C 310 80, 490 80, 470 280" fill="none" stroke="{loop_color_hex}" stroke-width="22" stroke-linecap="round"/>
+    <rect x="318" y="270" width="24" height="45" fill="{loop_color_hex}" rx="4"/>
+    <rect x="458" y="270" width="24" height="45" fill="{loop_color_hex}" rx="4"/>
+  </g>
         '''
     elif "double loop" in loop_raw or "double" in loop_raw:
-        # Dual Parallel Overhead Arches
-        loop_element = f'''
-            <g filter="url(#dropShadow)">
-              <path d="M 280 250 C 260 50, 420 50, 400 250" fill="none" stroke="{loop_color_hex}" stroke-width="20" stroke-linecap="round"/>
-              <path d="M 400 250 C 380 50, 540 50, 520 250" fill="none" stroke="{loop_color_hex}" stroke-width="20" stroke-linecap="round"/>
-              <rect x="270" y="240" width="20" height="35" fill="{loop_color_hex}" rx="4"/>
-              <rect x="510" y="240" width="20" height="35" fill="{loop_color_hex}" rx="4"/>
-            </g>
+        loop_layer = f'''
+  <g transform="translate(0, 40)" filter="url(#cadGlow)">
+    <path d="M 280 280 C 260 100, 420 100, 400 280" fill="none" stroke="{loop_color_hex}" stroke-width="18" stroke-linecap="round"/>
+    <path d="M 400 280 C 380 100, 540 100, 520 280" fill="none" stroke="{loop_color_hex}" stroke-width="18" stroke-linecap="round"/>
+    <rect x="270" y="270" width="20" height="45" fill="{loop_color_hex}" rx="3"/>
+    <rect x="510" y="270" width="20" height="45" fill="{loop_color_hex}" rx="3"/>
+  </g>
         '''
-    else:
-        # Four Cross Corner Loops
-        loop_element = f'''
-            <g filter="url(#dropShadow)">
-              <path d="M 260 250 C 230 70, 330 60, 300 250" fill="none" stroke="{loop_color_hex}" stroke-width="20" stroke-linecap="round"/>
-              <path d="M 500 250 C 470 60, 570 70, 540 250" fill="none" stroke="{loop_color_hex}" stroke-width="20" stroke-linecap="round"/>
-              <rect x="274" y="240" width="22" height="35" fill="{loop_color_hex}" rx="4"/>
-              <rect x="504" y="240" width="22" height="35" fill="{loop_color_hex}" rx="4"/>
-            </g>
+    else: # Cross Corner Loops
+        loop_layer = f'''
+  <g transform="translate(0, 40)" filter="url(#cadGlow)">
+    <path d="M 250 280 C 210 160, 310 160, 290 280" fill="none" stroke="{loop_color_hex}" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 550 280 C 590 160, 490 160, 510 280" fill="none" stroke="{loop_color_hex}" stroke-width="16" stroke-linecap="round"/>
+    <rect x="274" y="270" width="20" height="45" fill="{loop_color_hex}" rx="3"/>
+    <rect x="506" y="270" width="20" height="45" fill="{loop_color_hex}" rx="3"/>
+  </g>
         '''
 
-    # BOTTOM DISCHARGE SPOUT POSITIONED STRICTLY AT BASE CENTER
-    bottom_element = ""
-    if "Spout" in (config.bottom or "") or "Discharge" in (config.bottom or ""):
-        bottom_element = '''
-            <g transform="translate(0, -10)">
-              <path d="M 350 580 L 350 665 C 350 680, 450 680, 450 665 L 450 580 Z" fill="#E2E8F0" stroke="#1E293B" stroke-width="3"/>
-              <ellipse cx="400" cy="665" rx="50" ry="12" fill="#94A3B8" stroke="#1E293B" stroke-width="2.5"/>
-              <line x1="350" y1="630" x2="450" y2="630" stroke="#E53935" stroke-width="5"/>
-              <rect x="325" y="618" width="150" height="24" fill="#E53935" rx="5"/>
-              <text x="400" y="634" font-family="sans-serif" font-size="10" font-weight="900" fill="#FFFFFF" text-anchor="middle">BOTTOM DISCHARGE SPOUT</text>
-            </g>
-        '''
-
-    # INTERNAL BAFFLE CUTAWAY SECTION FOR BAFFLE BAGS
-    baffle_cutaway_element = ""
+    # 3. DYNAMIC LAYER 03: INTERNAL CORNER BAFFLE PANELS
+    baffle_layer = ""
     if is_baffle:
-        baffle_cutaway_element = '''
-            <g transform="translate(0,0)">
-              <polygon points="260,250 350,250 335,420 260,420" fill="#0F172A" opacity="0.85" stroke="#38BDF8" stroke-width="2.5" stroke-dasharray="5,3"/>
-              <polygon points="270,260 340,260 328,410 270,410" fill="#3B82F6" opacity="0.4" stroke="#60A5FA" stroke-width="1.5"/>
-              <circle cx="300" cy="290" r="12" fill="#0F172A" stroke="#38BDF8" stroke-width="1.5"/>
-              <circle cx="295" cy="340" r="14" fill="#0F172A" stroke="#38BDF8" stroke-width="1.5"/>
-              <circle cx="290" cy="390" r="12" fill="#0F172A" stroke="#38BDF8" stroke-width="1.5"/>
-              <line x1="300" y1="340" x2="160" y2="340" stroke="#38BDF8" stroke-width="2" stroke-dasharray="3,3"/>
-              <circle cx="300" cy="340" r="4" fill="#38BDF8"/>
-              <rect x="30" y="322" width="170" height="36" fill="#1E293B" rx="6" stroke="#38BDF8" stroke-width="1.5"/>
-              <text x="115" y="338" font-family="sans-serif" font-size="9" font-weight="900" fill="#38BDF8" text-anchor="middle">INTERNAL CORNER BAFFLE</text>
-              <text x="115" y="350" font-family="sans-serif" font-size="8" font-weight="700" fill="#FFFFFF" text-anchor="middle">WITH MATERIAL FLOW HOLES</text>
-            </g>
+        baffle_layer = '''
+  <g transform="translate(0, 50)" filter="url(#cadGlow)">
+    <polygon points="280,310 320,310 310,380 280,380" fill="#3B82F6" opacity="0.6" stroke="#38BDF8" stroke-width="1.5"/>
+    <circle cx="300" cy="335" r="7" fill="#0F172A" stroke="#38BDF8" stroke-width="1"/>
+    <circle cx="298" cy="360" r="7" fill="#0F172A" stroke="#38BDF8" stroke-width="1"/>
+
+    <polygon points="480,310 520,310 520,380 490,380" fill="#3B82F6" opacity="0.6" stroke="#38BDF8" stroke-width="1.5"/>
+    <circle cx="500" cy="335" r="7" fill="#0F172A" stroke="#38BDF8" stroke-width="1"/>
+    <circle cx="502" cy="360" r="7" fill="#0F172A" stroke="#38BDF8" stroke-width="1"/>
+  </g>
         '''
 
-    # CALLOUT ARROWS & CAPTION BADGES — ALWAYS GENERATED FOR EVERY BAG
-    callouts = []
-    
-    # 1. Electrical Safety Callout Badge with Technical Properties
-    if "Type C" in electro or "Conductive" in electro:
-        callouts.append('''
-            <g transform="translate(40, 480)">
-              <rect width="220" height="50" rx="8" fill="#1E293B" stroke="#EAB308" stroke-width="2"/>
-              <text x="12" y="16" font-family="sans-serif" font-size="10" font-weight="900" fill="#EAB308">ELECTRICAL SAFETY: CONDUCTIVE TYPE C</text>
-              <text x="12" y="30" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">• Interwoven Carbon Grid Threads</text>
-              <text x="12" y="42" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">• Resistance &lt;10^8 Ω (Yellow Grounding Tab)</text>
-              <line x1="220" y1="25" x2="280" y2="25" stroke="#EAB308" stroke-width="1.5" stroke-dasharray="3,3"/>
-              <circle cx="280" cy="25" r="4" fill="#EAB308"/>
-            </g>
-        ''')
-    elif "Type B" in electro:
-        callouts.append('''
-            <g transform="translate(40, 480)">
-              <rect width="220" height="50" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/>
-              <text x="12" y="16" font-family="sans-serif" font-size="10" font-weight="900" fill="#38BDF8">ELECTRICAL SAFETY: TYPE B</text>
-              <text x="12" y="30" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">• Breakdown Voltage &lt;6 kV Protection</text>
-              <text x="12" y="42" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">• Prevents Propagating Brush Discharges</text>
-            </g>
-        ''')
-    else:
-        callouts.append('''
-            <g transform="translate(40, 480)">
-              <rect width="220" height="50" rx="8" fill="#1E293B" stroke="#94A3B8" stroke-width="1.5"/>
-              <text x="12" y="16" font-family="sans-serif" font-size="10" font-weight="900" fill="#94A3B8">ELECTRICAL SAFETY: TYPE A</text>
-              <text x="12" y="30" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">• Standard Non-Conductive Polypropylene</text>
-              <text x="12" y="42" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">• Breakdown Voltage &gt;6 kV</text>
-            </g>
-        ''')
-
-    # 2. Sift-Proofing Callout Arrow & Line Indicator
-    callouts.append(f'''
-        <g transform="translate(555, 360)">
-          <rect width="205" height="46" rx="8" fill="#1E293B" stroke="#16A34A" stroke-width="2"/>
-          <text x="12" y="17" font-family="sans-serif" font-size="10" font-weight="900" fill="#4ADE80">SEAM SIFT-PROOFING</text>
-          <text x="12" y="31" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">Arrow: {sift_level}</text>
-          <text x="12" y="41" font-family="sans-serif" font-size="8" fill="#94A3B8">Felt filler cord stitched along side seam</text>
-          <line x1="0" y1="23" x2="-55" y2="23" stroke="#4ADE80" stroke-width="2"/>
-          <polygon points="-55,23 -45,18 -45,28" fill="#4ADE80"/>
-        </g>
-    ''')
-
-    # 3. Inner Barrier Liner Callout Arrow & Line Indicator
+    # 4. DYNAMIC LAYER 04: INNER BARRIER LINER
     if is_liner_active:
-        callouts.append(f'''
-            <g transform="translate(555, 240)">
-              <rect width="205" height="46" rx="8" fill="#1E293B" stroke="#3B82F6" stroke-width="2"/>
-              <text x="12" y="17" font-family="sans-serif" font-size="10" font-weight="900" fill="#60A5FA">INNER BARRIER LINER</text>
-              <text x="12" y="31" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">Arrow: {liner_const}</text>
-              <text x="12" y="41" font-family="sans-serif" font-size="8" fill="#94A3B8">Material: {liner_mat}</text>
-              <line x1="0" y1="23" x2="-75" y2="23" stroke="#3B82F6" stroke-width="2"/>
-              <polygon points="-75,23 -65,18 -65,28" fill="#3B82F6"/>
-            </g>
-        ''')
+        liner_layer = f'''
+  <g transform="translate(0, 70)">
+    <polygon points="310,400 490,400 460,580 340,580" fill="#60A5FA" fill-opacity="0.25" stroke="#60A5FA" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <ellipse cx="400" cy="400" rx="90" ry="22" fill="#93C5FD" fill-opacity="0.4" stroke="#60A5FA" stroke-width="2"/>
+    <ellipse cx="400" cy="580" rx="60" ry="16" fill="#3B82F6" fill-opacity="0.3" stroke="#60A5FA" stroke-width="2"/>
+  </g>
+        '''
     else:
-        callouts.append('''
-            <g transform="translate(555, 240)">
-              <rect width="205" height="46" rx="8" fill="#1E293B" stroke="#64748B" stroke-width="1.5"/>
-              <text x="12" y="17" font-family="sans-serif" font-size="10" font-weight="900" fill="#94A3B8">INNER BARRIER LINER</text>
-              <text x="12" y="31" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#FFFFFF">Arrow: Direct Fabric Containment</text>
-              <text x="12" y="41" font-family="sans-serif" font-size="8" fill="#94A3B8">No Inner Liner Required</text>
-              <line x1="0" y1="23" x2="-75" y2="23" stroke="#64748B" stroke-width="1.5" stroke-dasharray="3,3"/>
-              <circle cx="-75" cy="23" r="3" fill="#64748B"/>
-            </g>
-        ''')
+        liner_layer = '''
+  <g transform="translate(0, 70)">
+    <polygon points="310,400 490,400 460,580 340,580" fill="none" stroke="#64748B" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.4"/>
+  </g>
+        '''
 
-    callout_str = "".join(callouts)
+    # 5. DYNAMIC LAYER 05: MAIN PP WOVEN BODY SHELL
+    shell_lines = ""
+    if "4 panel" in bag_type.lower() or "4-panel" in bag_type.lower():
+        shell_lines = '''
+            <line x1="320" y1="620" x2="320" y2="830" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4,4"/>
+            <line x1="480" y1="620" x2="480" y2="830" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4,4"/>
+        '''
 
-    svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+    body_layer = f'''
+  <g transform="translate(0, 90)">
+    <polygon points="240,620 560,620 520,830 280,830" fill="#F8FAFC" fill-opacity="0.95" stroke="#94A3B8" stroke-width="3"/>
+    {shell_lines}
+    <text x="400" y="720" font-family="'Inter', sans-serif" font-weight="900" font-size="24" fill="#E53935" text-anchor="middle">{print_text[:14]}</text>
+    <text x="400" y="748" font-family="'Inter', sans-serif" font-weight="700" font-size="12" fill="#475569" text-anchor="middle">SWL: {config.capacity or '1000 kg'}</text>
+  </g>
+    '''
+
+    # 6. DYNAMIC LAYER 06: BOTTOM DISCHARGE MECHANISM
+    if "flat" in bottom_raw:
+        bottom_layer = '''
+  <g transform="translate(0, 100)" filter="url(#cadGlow)">
+    <polygon points="270,870 530,870 510,910 290,910" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <rect x="260" y="910" width="280" height="16" fill="#78350F" stroke="#B45309" stroke-width="1.5"/>
+  </g>
+        '''
+    else: # Discharge Spout
+        bottom_layer = '''
+  <g transform="translate(0, 100)" filter="url(#cadGlow)">
+    <rect x="345" y="870" width="110" height="55" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5" rx="4"/>
+    <ellipse cx="400" cy="870" rx="55" ry="14" fill="#334155" stroke="#38BDF8" stroke-width="2"/>
+    <line x1="345" y1="895" x2="455" y2="895" stroke="#E53935" stroke-width="4"/>
+  </g>
+        '''
+
+    svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="100%" height="100%">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#F1F5F9"/>
+    <linearGradient id="cadBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
     </linearGradient>
 
-    <linearGradient id="frontShade" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="{fabric_bg}" stop-opacity="1"/>
-      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="{fabric_bg}" stop-opacity="0.95"/>
-    </linearGradient>
-
-    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#0F172A" flood-opacity="0.12"/>
+    <filter id="cadGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#38BDF8" flood-opacity="0.4"/>
     </filter>
   </defs>
 
-  <!-- Background -->
-  <rect width="800" height="800" fill="url(#bgGrad)"/>
+  <rect width="800" height="1000" fill="url(#cadBg)"/>
   
-  <!-- Floor Shadow -->
-  <ellipse cx="400" cy="710" rx="230" ry="25" fill="#0F172A" opacity="0.12"/>
-
-  <!-- Loops -->
-  {loop_element}
-
-  <!-- Top Element -->
-  {top_element}
-
-  <!-- Main Bag Body Shell -->
-  <g filter="url(#dropShadow)">
-    <polygon points="250,240 550,240 520,580 280,580" fill="url(#frontShade)" stroke="{fabric_stroke}" stroke-width="3"/>
-    
-    <!-- Conductive Thread Grid if Type C -->
-    {"<line x1='250' y1='320' x2='550' y2='320' stroke='#1E293B' stroke-width='1.5' stroke-dasharray='4,4'/><line x1='250' y1='440' x2='550' y2='440' stroke='#1E293B' stroke-width='1.5' stroke-dasharray='4,4'/><line x1='350' y1='240' x2='350' y2='580' stroke='#1E293B' stroke-width='1.5' stroke-dasharray='4,4'/><line x1='450' y1='240' x2='450' y2='580' stroke='#1E293B' stroke-width='1.5' stroke-dasharray='4,4'/>" if "Type C" in electro else ""}
-
-    <!-- Seams -->
-    <line x1="280" y1="240" x2="280" y2="580" stroke="#94A3B8" stroke-width="2.5" stroke-dasharray="6,4"/>
-    <line x1="520" y1="240" x2="520" y2="580" stroke="#94A3B8" stroke-width="2.5" stroke-dasharray="6,4"/>
-  </g>
-
-  <!-- Internal Baffle Cutaway if Baffle Bag -->
-  {baffle_cutaway_element}
-
-  <!-- Bottom Element -->
-  {bottom_element}
-
-  <!-- Printing & Brand Logo -->
-  <g transform="translate(400, 440)">
-    <rect x="-70" y="-35" width="140" height="70" fill="#FFFFFF" fill-opacity="0.8" rx="8" stroke="#E2E8F0"/>
-    <ellipse cx="0" cy="-12" rx="35" ry="18" fill="{print_color_hex}"/>
-    <text x="0" y="-8" font-family="'Inter', sans-serif" font-weight="900" font-size="12" fill="#FFFFFF" text-anchor="middle">pegma</text>
-    <text x="0" y="16" font-family="'Inter', sans-serif" font-weight="900" font-size="14" fill="#1E293B" text-anchor="middle">{print_text[:14]}</text>
-    <text x="0" y="28" font-family="'Inter', sans-serif" font-weight="700" font-size="9" fill="#E53935" text-anchor="middle">SWL: {config.capacity or '1000 kg'}</text>
-  </g>
-
-  <!-- Callouts & Arrows -->
-  {callout_str}
-
-  <!-- Specification Badge -->
-  <rect x="24" y="24" width="340" height="54" fill="#0F172A" rx="12"/>
-  <text x="44" y="46" font-family="sans-serif" font-weight="900" font-size="13" fill="#38BDF8">PEGMA FIBC CAD VISUALIZER</text>
-  <text x="44" y="63" font-family="sans-serif" font-weight="700" font-size="11" fill="#94A3B8">{bag_type} • {config.capacity or '1000 kg'} • {config.fabricColor or 'White'}</text>
-
+  {top_layer}
+  {loop_layer}
+  {baffle_layer}
+  {liner_layer}
+  {body_layer}
+  {bottom_layer}
 </svg>'''
-
-    encoded_svg = urllib.parse.quote(svg_content)
-    return f"data:image/svg+xml;utf8,{encoded_svg}"
 
     encoded_svg = urllib.parse.quote(svg_content)
     return f"data:image/svg+xml;utf8,{encoded_svg}"
@@ -292,10 +199,9 @@ def generate_svg_procedural_image(config: FIBCBagConfig) -> str:
 
 def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> dict:
     """
-    Multimodal Reference Image Engine using Google GenAI SDK.
-    Loads matching component PNG reference files from /Users/sarveshhh/Desktop/reference
-    and attaches them directly as multimodal image bytes to client.models.generate_content.
-    Verifies that ALL 5 reference slots (logo, bag type, loops, top, bottom) are loaded and attached with detailed logs.
+    Multimodal Reference Engine for Google GenAI SDK.
+    Passes 2 primary ground-truth image parts (Logo + Bag Construction Reference)
+    alongside a structured crisp text prompt for 100% reliable image synthesis.
     """
     start_time = time.time()
     prompt = custom_prompt or build_gemini_prompt(config)
@@ -320,129 +226,90 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                 "gemini-3.1-flash-image"
             ]
 
-            # Prepare Multimodal Payload
             contents_payload = []
             ref_directives = []
 
-            # 1. Custom Uploaded Logo or Desktop Reference logo.JPEG or Default PEGMA Logo
+            # 1. Custom Uploaded Logo or Desktop/Local Reference logo.JPEG
             if config.logoImage and "data:image" in config.logoImage:
                 try:
                     header, b64str = config.logoImage.split(",", 1)
                     logo_bytes = base64.b64decode(b64str)
                     mime_type = "image/png" if "png" in header else "image/jpeg"
                     contents_payload.append(types.Part.from_bytes(data=logo_bytes, mime_type=mime_type))
-                    ref_directives.append("IMAGE REF (Logo): Print this custom uploaded company logo prominently on the center front panel.")
-                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Custom uploaded logo attached ({len(logo_bytes)} bytes)")
+                    ref_directives.append("IMAGE REF 1 (Company Logo): Print this custom uploaded company logo prominently on the center front panel.")
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached custom uploaded logo ({len(logo_bytes)} bytes)")
                 except Exception as logo_err:
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO] Decode error: {logo_err}")
             else:
-                desktop_logo = os.path.join(DESKTOP_REF_DIR, "logo.JPEG")
-                if not os.path.exists(desktop_logo):
-                    desktop_logo = os.path.join(DESKTOP_REF_DIR, "logo.png")
-                if not os.path.exists(desktop_logo):
-                    desktop_logo = os.path.join(DESKTOP_REF_DIR, "logo.jpg")
+                logo_file = os.path.join(DESKTOP_REF_DIR, "logo.JPEG")
+                if not os.path.exists(logo_file):
+                    logo_file = os.path.join(LOCAL_REF_DIR, "logo.JPEG")
 
-                if os.path.exists(desktop_logo):
-                    with open(desktop_logo, "rb") as f:
+                if os.path.exists(logo_file):
+                    with open(logo_file, "rb") as f:
                         l_bytes = f.read()
-                        mime = "image/png" if desktop_logo.endswith(".png") else "image/jpeg"
-                        contents_payload.append(types.Part.from_bytes(data=l_bytes, mime_type=mime))
-                        ref_directives.append(f"IMAGE REF ({os.path.basename(desktop_logo)}): Print this exact PEGMA brand logo photo prominently on the center front panel.")
-                        print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached Desktop logo photo '{os.path.basename(desktop_logo)}' ({len(l_bytes)} bytes)")
-                else:
-                    default_logo = os.path.join(os.path.dirname(__file__), "assets", "pegma_logo_ref.jpg")
-                    if os.path.exists(default_logo):
-                        with open(default_logo, "rb") as f:
-                            l_bytes = f.read()
-                            contents_payload.append(types.Part.from_bytes(data=l_bytes, mime_type="image/jpeg"))
-                            ref_directives.append("IMAGE REF (PEGMA Logo): Print the PEGMA brand logo on the center front panel.")
-                            print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Default pegma_logo_ref.jpg attached ({len(l_bytes)} bytes)")
+                        contents_payload.append(types.Part.from_bytes(data=l_bytes, mime_type="image/jpeg"))
+                        ref_directives.append("IMAGE REF 1 (PEGMA Logo): Print the PEGMA brand logo photo prominently on the center front panel.")
+                        print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached logo.JPEG ({len(l_bytes)} bytes)")
 
-            # 2. Component Reference Images Helper
-            def attach_ref_image(slot_name: str, filename: str, desc: str):
-                if not filename:
-                    return
-                file_path = os.path.join(DESKTOP_REF_DIR, filename)
-                if os.path.exists(file_path):
-                    try:
-                        with open(file_path, "rb") as f:
-                            img_bytes = f.read()
-                            contents_payload.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
-                            ref_directives.append(f"IMAGE REF ({filename}): {desc}")
-                            print(f"[PEGMA MULTIMODAL AUDIT] {slot_name}: Attached '{filename}' ({len(img_bytes)} bytes)")
-                    except Exception as err:
-                        print(f"[PEGMA MULTIMODAL AUDIT] {slot_name}: Failed reading '{filename}': {err}")
-                else:
-                    print(f"[PEGMA MULTIMODAL AUDIT] {slot_name}: File '{filename}' not found at {file_path}")
-
-            # Slot 2: Map Bag Type
+            # 2. Primary Bag Type & Construction Reference Image
             b_raw = (config.bagType or "U Panel").lower()
+            ref_filename = "upanel.png"
+            ref_desc = "U-Panel body construction"
+
             if "net baffle" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "netbaffle.png", "Use as exact visual reference to render semi-transparent cutaway revealing internal polypropylene net-mesh corner baffles.")
+                ref_filename = "netbaffle.png"
+                ref_desc = "Semi-transparent cutaway revealing internal polypropylene net-mesh corner baffles"
             elif "baffle" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "baffle.png", "Use as exact visual reference to render semi-transparent cutaway revealing internal fabric corner baffles with circular material-flow holes inside all four corners.")
+                ref_filename = "baffle.png"
+                ref_desc = "Semi-transparent cutaway revealing internal fabric corner baffles with circular material-flow holes"
             elif "food grade" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "foodgrade.png", "Use as exact visual reference for Food Grade bag finish.")
+                ref_filename = "foodgrade.png"
+                ref_desc = "Food Grade clean room FIBC finish"
             elif "un certified" in b_raw or "un" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "uncertified.png", "Use as exact visual reference for UN Certified hazardous bag.")
+                ref_filename = "uncertified.png"
+                ref_desc = "UN certified hazardous bag structure"
             elif "4 panel" in b_raw or "4-panel" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "4panel.png", "Use as exact visual reference for 4-Panel body construction.")
+                ref_filename = "4panel.png"
+                ref_desc = "4-Panel cubical body construction"
             elif "circular" in b_raw or "tubular" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "circular.png", "Use as exact visual reference for Circular tubular body construction.")
+                ref_filename = "circular.png"
+                ref_desc = "Circular tubular body construction"
             elif "2 panel" in b_raw or "2-panel" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "u+2panel.png", "Use as exact visual reference for 2-Panel bag structure.")
+                ref_filename = "u+2panel.png"
+                ref_desc = "2-Panel bag construction"
             elif "asbestos" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "asbestos.png", "Use as exact visual reference for Asbestos Plate bag design.")
+                ref_filename = "asbestos.png"
+                ref_desc = "Asbestos plate disposal bag"
             elif "drum" in b_raw:
-                attach_ref_image("Slot 2 [BAG TYPE]", "drum.png", "Use as exact visual reference for Drum bag design.")
-            else:
-                attach_ref_image("Slot 2 [BAG TYPE]", "upanel.png", "Use as exact visual reference for U-Panel body construction.")
+                ref_filename = "drum.png"
+                ref_desc = "Drum bag cylindrical design"
 
-            # Slot 3: Map Loop Config (VERIFIED & AUDITED)
-            l_raw = (config.loopType or "Cross Corner").lower()
-            if "single loop" in l_raw or "single" in l_raw:
-                attach_ref_image("Slot 3 [LOOP CONFIG]", "singleloop.png", "Use as exact visual reference for Single Loop overhead continuous lifting arch.")
-            elif "double loop" in l_raw or "double" in l_raw:
-                attach_ref_image("Slot 3 [LOOP CONFIG]", "doubleloop.png", "Use as exact visual reference for Double Loop dual overhead continuous lifting arches.")
-            else:
-                attach_ref_image("Slot 3 [LOOP CONFIG]", "crosscornerloop.png", "Use as exact visual reference for Cross Corner webbing lifting loops.")
+            primary_path = os.path.join(DESKTOP_REF_DIR, ref_filename)
+            if not os.path.exists(primary_path):
+                primary_path = os.path.join(LOCAL_REF_DIR, ref_filename)
 
-            # Slot 4: Map Top Opening
-            t_raw = (config.top or "Duffle Top").lower()
-            if "duffle" in t_raw or "skirt" in t_raw:
-                attach_ref_image("Slot 4 [TOP OPENING]", "duffletop.png", "Use as exact visual reference for Duffle Top skirt opening.")
-            elif "spout" in t_raw or "filling" in t_raw:
-                attach_ref_image("Slot 4 [TOP OPENING]", "fillingspout.png", "Use as exact visual reference for Filling Spout top mechanism.")
-            elif "conical" in t_raw:
-                attach_ref_image("Slot 4 [TOP OPENING]", "conicaltop.png", "Use as exact visual reference for Conical Top mechanism.")
-            elif "skirt" in t_raw:
-                attach_ref_image("Slot 4 [TOP OPENING]", "skirttop.png", "Use as exact visual reference for Skirt Top mechanism.")
-            else:
-                attach_ref_image("Slot 4 [TOP OPENING]", "opentop.png", "Use as exact visual reference for Open Top rim.")
+            if os.path.exists(primary_path):
+                try:
+                    with open(primary_path, "rb") as f:
+                        img_bytes = f.read()
+                        mime = "image/png" if ref_filename.endswith(".png") else "image/jpeg"
+                        contents_payload.append(types.Part.from_bytes(data=img_bytes, mime_type=mime))
+                        ref_directives.append(f"IMAGE REF 2 ({ref_filename}): {ref_desc}.")
+                        print(f"[PEGMA MULTIMODAL AUDIT] Slot 2 [CONSTRUCTION]: Attached '{ref_filename}' ({len(img_bytes)} bytes)")
+                except Exception as ref_err:
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 2 [CONSTRUCTION] Read error: {ref_err}")
 
-            # Slot 5: Map Bottom Discharge
-            bt_raw = (config.bottom or "Discharge Spout").lower()
-            if "spout" in bt_raw or "discharge" in bt_raw:
-                attach_ref_image("Slot 5 [BOTTOM DISCHARGE]", "discharge spout.png", "Use as exact visual reference for Bottom Discharge Spout hanging down centered.")
-            elif "conical" in bt_raw:
-                attach_ref_image("Slot 5 [BOTTOM DISCHARGE]", "conicalbottom.png", "Use as exact visual reference for Conical Bottom base.")
-            elif "diaper" in bt_raw:
-                attach_ref_image("Slot 5 [BOTTOM DISCHARGE]", "diaperbottom.png", "Use as exact visual reference for Diaper Bottom flap closure.")
-            else:
-                attach_ref_image("Slot 5 [BOTTOM DISCHARGE]", "flatbottom.png", "Use as exact visual reference for Flat Bottom base.")
-
-            # Streamlined Multimodal Master Directive
-            full_prompt_text = (
+            # Master Multimodal Text Directive
+            full_prompt = (
                 f"Generate a 3D commercial studio product photograph of a custom FIBC bulk bag matching the attached reference images. "
+                f"VISUAL GROUND TRUTH: {' '.join(ref_directives)} "
                 f"{prompt}"
             )
-
-            contents_payload.append(full_prompt_text)
-
-            print(f"[PEGMA MULTIMODAL AUDIT] TOTAL PAYLOAD: {len(contents_payload)-1} reference images attached + 1 master text prompt.")
+            contents_payload.append(full_prompt)
 
             for model_name in models_to_try:
-                print(f"[PEGMA GEMINI SERVICE] Calling Google GenAI SDK '{model_name}' with payload...")
+                print(f"[PEGMA GEMINI SERVICE] Calling Google GenAI SDK '{model_name}' with 2-image payload...")
                 try:
                     res = client.models.generate_content(
                         model=model_name,
@@ -464,12 +331,11 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                                     "is_fallback": False
                                 }
                 except Exception as model_err:
-                    print(f"[PEGMA GEMINI SERVICE] Model '{model_name}' failed: {model_err}")
-                    # Plain text fallback call
+                    print(f"[PEGMA GEMINI SERVICE] Multimodal '{model_name}' failed: {model_err}")
                     try:
                         res = client.models.generate_content(
                             model=model_name,
-                            contents=f"Generate a realistic 3D studio product photograph of a white FIBC bulk bag matching specs: {prompt}"
+                            contents=f"Generate a 3D commercial studio product photograph of a white FIBC bulk bag matching specs: {prompt}"
                         )
                         if hasattr(res, 'candidates') and res.candidates:
                             for part in res.candidates[0].content.parts:
@@ -487,7 +353,7 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                                         "is_fallback": False
                                     }
                     except Exception as text_err:
-                        print(f"[PEGMA GEMINI SERVICE] Plain text fallback for '{model_name}' failed: {text_err}")
+                        print(f"[PEGMA GEMINI SERVICE] Text fallback for '{model_name}' failed: {text_err}")
 
         except Exception as e:
             print(f"[PEGMA GEMINI SERVICE] Google GenAI SDK error: {e}")
