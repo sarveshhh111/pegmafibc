@@ -1,3 +1,11 @@
+import sys
+import os
+
+# Ensure backend directory and parent directory are on sys.path for Render deployment
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.abspath("backend"))
+sys.path.insert(0, os.path.abspath("."))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
