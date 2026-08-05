@@ -41,8 +41,6 @@ def generate_svg_procedural_image(config: FIBCBagConfig) -> str:
     loop_raw = (config.loopType or "Cross Corner").lower()
     
     is_liner_active = (config.linerRequired or "Yes").lower() == "yes"
-    liner_const = config.linerConstruction or "Loose Liner"
-    liner_mat = config.linerMaterial or "Standard PE"
     electro = config.electrostaticType or "Type A"
 
     # 1. DYNAMIC LAYER 01: TOP CLOSURE MECHANISM
@@ -200,8 +198,8 @@ def generate_svg_procedural_image(config: FIBCBagConfig) -> str:
 def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> dict:
     """
     Multimodal Reference Engine for Google GenAI SDK.
-    Passes 2 primary ground-truth image parts (Logo + Bag Construction Reference)
-    alongside a structured crisp text prompt for 100% reliable image synthesis.
+    Sends all selected component reference images (Logo, Bag Type, Loops, Top, Bottom)
+    alongside spatial positioning directives to draw components exactly on the main bag type.
     """
     start_time = time.time()
     prompt = custom_prompt or build_gemini_prompt(config)
@@ -229,87 +227,133 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
             contents_payload = []
             ref_directives = []
 
-            # 1. Custom Uploaded Logo or Desktop/Local Reference logo.JPEG
+            def attach_image(filename: str) -> bool:
+                """Helper to locate and attach a reference image file into Gemini payload."""
+                p = os.path.join(DESKTOP_REF_DIR, filename)
+                if not os.path.exists(p):
+                    p = os.path.join(LOCAL_REF_DIR, filename)
+                if os.path.exists(p):
+                    try:
+                        with open(p, "rb") as f:
+                            b = f.read()
+                            mime = "image/png" if filename.endswith(".png") else "image/jpeg"
+                            contents_payload.append(types.Part.from_bytes(data=b, mime_type=mime))
+                            return True
+                    except Exception as err:
+                        print(f"[PEGMA MULTIMODAL AUDIT] Failed reading '{filename}': {err}")
+                return False
+
+            # 1. Slot 1: Logo Reference Image
             if config.logoImage and "data:image" in config.logoImage:
                 try:
                     header, b64str = config.logoImage.split(",", 1)
                     logo_bytes = base64.b64decode(b64str)
                     mime_type = "image/png" if "png" in header else "image/jpeg"
                     contents_payload.append(types.Part.from_bytes(data=logo_bytes, mime_type=mime_type))
-                    ref_directives.append("IMAGE REF 1 (Company Logo): Print this custom uploaded company logo prominently on the center front panel.")
-                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached custom uploaded logo ({len(logo_bytes)} bytes)")
+                    ref_directives.append("LOGO: Print attached custom company logo image strictly on the center front panel of the main bag body.")
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Custom logo attached ({len(logo_bytes)} bytes)")
                 except Exception as logo_err:
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO] Decode error: {logo_err}")
-            else:
-                logo_file = os.path.join(DESKTOP_REF_DIR, "logo.JPEG")
-                if not os.path.exists(logo_file):
-                    logo_file = os.path.join(LOCAL_REF_DIR, "logo.JPEG")
+            elif config.printing and config.printing.strip().lower() != "no printing":
+                if attach_image("logo.JPEG"):
+                    ref_directives.append("LOGO: Print attached logo.JPEG strictly on the center front panel of the main bag body.")
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached logo.JPEG")
 
-                if os.path.exists(logo_file):
-                    with open(logo_file, "rb") as f:
-                        l_bytes = f.read()
-                        contents_payload.append(types.Part.from_bytes(data=l_bytes, mime_type="image/jpeg"))
-                        ref_directives.append("IMAGE REF 1 (PEGMA Logo): Print the PEGMA brand logo photo prominently on the center front panel.")
-                        print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached logo.JPEG ({len(l_bytes)} bytes)")
-
-            # 2. Primary Bag Type & Construction Reference Image
+            # 2. Slot 2: Main Bag Type & Construction Reference Image
             b_raw = (config.bagType or "U Panel").lower()
-            ref_filename = "upanel.png"
-            ref_desc = "U-Panel body construction"
+            bag_ref_file = "upanel.png"
+            bag_ref_desc = "U-Panel body construction"
 
             if "net baffle" in b_raw:
-                ref_filename = "netbaffle.png"
-                ref_desc = "Semi-transparent cutaway revealing internal polypropylene net-mesh corner baffles"
-            elif "baffle" in b_raw:
-                ref_filename = "baffle.png"
-                ref_desc = "Semi-transparent cutaway revealing internal fabric corner baffles with circular material-flow holes"
+                bag_ref_file = "netbaffle.png"
+                bag_ref_desc = "Net Baffle Bag body with internal net-mesh corner baffles"
+            elif "baffle" in b_raw or "q-bag" in b_raw:
+                bag_ref_file = "baffle.png"
+                bag_ref_desc = "Baffle Bag body with internal fabric corner baffles with circular material-flow holes"
             elif "food grade" in b_raw:
-                ref_filename = "foodgrade.png"
-                ref_desc = "Food Grade clean room FIBC finish"
+                bag_ref_file = "foodgrade.png"
+                bag_ref_desc = "Food Grade clean room FIBC finish"
             elif "un certified" in b_raw or "un" in b_raw:
-                ref_filename = "uncertified.png"
-                ref_desc = "UN certified hazardous bag structure"
+                bag_ref_file = "uncertified.png"
+                bag_ref_desc = "UN certified hazardous bag structure"
             elif "4 panel" in b_raw or "4-panel" in b_raw:
-                ref_filename = "4panel.png"
-                ref_desc = "4-Panel cubical body construction"
+                bag_ref_file = "4panel.png"
+                bag_ref_desc = "4-Panel cubical body construction"
             elif "circular" in b_raw or "tubular" in b_raw:
-                ref_filename = "circular.png"
-                ref_desc = "Circular tubular body construction"
+                bag_ref_file = "circular.png"
+                bag_ref_desc = "Circular tubular body construction"
             elif "2 panel" in b_raw or "2-panel" in b_raw:
-                ref_filename = "u+2panel.png"
-                ref_desc = "2-Panel bag construction"
+                bag_ref_file = "u+2panel.png"
+                bag_ref_desc = "2-Panel bag construction"
             elif "asbestos" in b_raw:
-                ref_filename = "asbestos.png"
-                ref_desc = "Asbestos plate disposal bag"
+                bag_ref_file = "asbestos.png"
+                bag_ref_desc = "Asbestos plate disposal bag"
             elif "drum" in b_raw:
-                ref_filename = "drum.png"
-                ref_desc = "Drum bag cylindrical design"
+                bag_ref_file = "drum.png"
+                bag_ref_desc = "Drum bag cylindrical design"
 
-            primary_path = os.path.join(DESKTOP_REF_DIR, ref_filename)
-            if not os.path.exists(primary_path):
-                primary_path = os.path.join(LOCAL_REF_DIR, ref_filename)
+            if attach_image(bag_ref_file):
+                ref_directives.append(f"MAIN BAG BODY: The main bag body structure must strictly follow attached '{bag_ref_file}' ({bag_ref_desc}).")
+                print(f"[PEGMA MULTIMODAL AUDIT] Slot 2 [BAG TYPE]: Attached '{bag_ref_file}'")
 
-            if os.path.exists(primary_path):
-                try:
-                    with open(primary_path, "rb") as f:
-                        img_bytes = f.read()
-                        mime = "image/png" if ref_filename.endswith(".png") else "image/jpeg"
-                        contents_payload.append(types.Part.from_bytes(data=img_bytes, mime_type=mime))
-                        ref_directives.append(f"IMAGE REF 2 ({ref_filename}): {ref_desc}.")
-                        print(f"[PEGMA MULTIMODAL AUDIT] Slot 2 [CONSTRUCTION]: Attached '{ref_filename}' ({len(img_bytes)} bytes)")
-                except Exception as ref_err:
-                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 2 [CONSTRUCTION] Read error: {ref_err}")
+            # 3. Slot 3: Lifting Loops Reference Image
+            l_raw = (config.loopType or "").lower()
+            if l_raw and l_raw not in ["not selected", "none", ""]:
+                loop_ref_file = "crosscornerloop.png"
+                if "single" in l_raw:
+                    loop_ref_file = "singleloop.png"
+                elif "double" in l_raw:
+                    loop_ref_file = "doubleloop.png"
 
-            # Master Multimodal Text Directive
-            full_prompt = (
-                f"Generate a 3D commercial studio product photograph of a custom FIBC bulk bag matching the attached reference images. "
-                f"VISUAL GROUND TRUTH: {' '.join(ref_directives)} "
-                f"{prompt}"
+                if attach_image(loop_ref_file):
+                    ref_directives.append(f"LIFTING LOOPS: Draw lifting loops strictly on the top rim/corners of the main bag body exactly as shown in attached '{loop_ref_file}'.")
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 3 [LOOPS]: Attached '{loop_ref_file}'")
+
+            # 4. Slot 4: Top Opening Reference Image
+            t_raw = (config.top or "").lower()
+            if t_raw and t_raw not in ["not selected", "none", ""]:
+                top_ref_file = "duffletop.png"
+                if "spout" in t_raw or "filling" in t_raw:
+                    top_ref_file = "fillingspout.png"
+                elif "open" in t_raw:
+                    top_ref_file = "opentop.png"
+                elif "conical" in t_raw:
+                    top_ref_file = "conicaltop.png"
+                elif "skirt" in t_raw:
+                    top_ref_file = "skirttop.png"
+
+                if attach_image(top_ref_file):
+                    ref_directives.append(f"TOP OPENING: Draw top opening mechanism strictly at the top of the main bag body exactly as shown in attached '{top_ref_file}'.")
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 4 [TOP]: Attached '{top_ref_file}'")
+
+            # 5. Slot 5: Bottom Discharge Reference Image
+            bt_raw = (config.bottom or "").lower()
+            if bt_raw and bt_raw not in ["not selected", "none", ""]:
+                bot_ref_file = "discharge spout.png"
+                if "flat" in bt_raw:
+                    bot_ref_file = "flatbottom.png"
+                elif "conical" in bt_raw:
+                    bot_ref_file = "conicalbottom.png"
+                elif "diaper" in bt_raw:
+                    bot_ref_file = "diaperbottom.png"
+
+                if attach_image(bot_ref_file):
+                    ref_directives.append(f"BOTTOM DISCHARGE: Draw bottom discharge mechanism strictly at the bottom base of the main bag body exactly as shown in attached '{bot_ref_file}'.")
+                    print(f"[PEGMA MULTIMODAL AUDIT] Slot 5 [BOTTOM]: Attached '{bot_ref_file}'")
+
+            # Master Spatial Positioning Directive Prompt
+            spatial_prompt = (
+                f"Generate a photorealistic 3D commercial studio photograph of a custom FIBC bulk bag matching all attached reference images. "
+                f"STRICT SPATIAL POSITIONING DIRECTIVES: {' '.join(ref_directives)} "
+                f"FULL SPECIFICATIONS: {prompt}"
             )
-            contents_payload.append(full_prompt)
+            contents_payload.append(spatial_prompt)
+
+            num_ref_images = len(contents_payload) - 1
+            print(f"[PEGMA MULTIMODAL AUDIT] TOTAL PAYLOAD: {num_ref_images} reference images attached + 1 master spatial prompt.")
 
             for model_name in models_to_try:
-                print(f"[PEGMA GEMINI SERVICE] Calling Google GenAI SDK '{model_name}' with 2-image payload...")
+                print(f"[PEGMA GEMINI SERVICE] Calling Google GenAI SDK '{model_name}' with {num_ref_images}-image payload...")
                 try:
                     res = client.models.generate_content(
                         model=model_name,
