@@ -10,7 +10,6 @@ import {
   RotateCcw, 
   Printer, 
   ShieldAlert, 
-  CheckSquare, 
   Sparkles,
   Award,
   FileText,
@@ -22,12 +21,17 @@ import {
   Shield,
   Container,
   FileSpreadsheet,
-  X
+  X,
+  Check,
+  AlertCircle,
+  Upload,
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 import { FIBCBagConfig } from '../../types';
 
 export const ConfiguratorPanel: React.FC = () => {
-  const { config, updateConfig, generateImage, isGenerating, resetConfig } = useConfigurator();
+  const { config, updateConfig, generateImage, isGenerating, resetConfig, showToast } = useConfigurator();
 
   // Custom Input State toggles
   const [customBagTypeInput, setCustomBagTypeInput] = useState('');
@@ -48,9 +52,6 @@ export const ConfiguratorPanel: React.FC = () => {
   const [customSiftInput, setCustomSiftInput] = useState('');
   const [isCustomSift, setIsCustomSift] = useState(false);
 
-  const [customLinerInput, setCustomLinerInput] = useState('');
-  const [isCustomLiner, setIsCustomLiner] = useState(false);
-
   const [customTopInput, setCustomTopInput] = useState('');
   const [isCustomTop, setIsCustomTop] = useState(false);
 
@@ -63,42 +64,41 @@ export const ConfiguratorPanel: React.FC = () => {
   const [customLoopColorInput, setCustomLoopColorInput] = useState('');
   const [isCustomLoopColor, setIsCustomLoopColor] = useState(false);
 
+  const [customLinerConstInput, setCustomLinerConstInput] = useState('');
+  const [isCustomLinerConst, setIsCustomLinerConst] = useState(false);
+
+  const [customLinerMatInput, setCustomLinerMatInput] = useState('');
+  const [isCustomLinerMat, setIsCustomLinerMat] = useState(false);
+
   const [customPrintInput, setCustomPrintInput] = useState('');
   const [isCustomPrint, setIsCustomPrint] = useState(false);
 
-  const [customAccessoryInput, setCustomAccessoryInput] = useState('');
   const [extraNotesInput, setExtraNotesInput] = useState('');
 
-  // Toggle/Unselect Helper function
-  const toggleOption = (field: keyof FIBCBagConfig, value: string, resetCustomFn?: () => void) => {
-    if (resetCustomFn) resetCustomFn();
-    if (config[field] === value) {
-      updateConfig(field, 'None');
+  // Toggle single option on/off (clicking an active option unselects it to empty string)
+  const toggleSingleConfig = (
+    key: keyof FIBCBagConfig, 
+    value: string, 
+    setIsCustomState?: (val: boolean) => void
+  ) => {
+    if (setIsCustomState) setIsCustomState(false);
+    if (config[key] === value) {
+      updateConfig(key, '');
     } else {
-      updateConfig(field, value);
+      updateConfig(key, value);
     }
   };
 
-  // Helper for multi-select accessories
-  const toggleAccessory = (accName: string) => {
+  // Helper for multi-select extra items
+  const toggleExtraItem = (item: string) => {
     const current = config.accessories || [];
     let updated: string[];
-    if (current.includes(accName)) {
-      updated = current.filter(a => a !== accName);
+    if (current.includes(item)) {
+      updated = current.filter(a => a !== item);
     } else {
-      updated = [...current, accName];
+      updated = [...current, item];
     }
     updateConfig('accessories', updated);
-  };
-
-  const handleAddCustomAccessory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customAccessoryInput.trim()) return;
-    const current = config.accessories || [];
-    if (!current.includes(customAccessoryInput.trim())) {
-      updateConfig('accessories', [...current, customAccessoryInput.trim()]);
-    }
-    setCustomAccessoryInput('');
   };
 
   const handleAddExtraNotes = (e: React.FormEvent) => {
@@ -111,16 +111,33 @@ export const ConfiguratorPanel: React.FC = () => {
     setExtraNotesInput('');
   };
 
-  const allAccessories = [
-    { name: 'Food Grade', icon: <Award className="w-3.5 h-3.5 text-amber-500" />, desc: 'Pharma & Food certified clean room' },
-    { name: 'UN Certified', icon: <ShieldAlert className="w-3.5 h-3.5 text-red-500" />, desc: 'Hazardous materials packaging standard' },
-    { name: 'Document Pouch', icon: <FileText className="w-3.5 h-3.5 text-emerald-500" />, desc: 'Stitched A4 transparent document sleeve' },
-    { name: 'Barcode Tag', icon: <Tag className="w-3.5 h-3.5 text-slate-500" />, desc: 'Serialized barcode inventory tag' },
-  ];
+  // File Upload Handler for Logo Image
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const customAddedAccessories = (config.accessories || []).filter(
-    a => !allAccessories.some(preset => preset.name === a)
-  );
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("File size too large (max 5MB)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const base64Data = uploadEvent.target?.result as string;
+      updateConfig('logoImage', base64Data);
+      updateConfig('logoFileName', file.name);
+      showToast(`Uploaded custom logo: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeCustomLogo = () => {
+    updateConfig('logoImage', '');
+    updateConfig('logoFileName', '');
+    showToast("Removed custom logo image");
+  };
+
+  const isLinerEnabled = (config.linerRequired || 'Yes').toLowerCase() === 'yes';
 
   return (
     <div className="flex flex-col space-y-4 font-sans">
@@ -132,7 +149,7 @@ export const ConfiguratorPanel: React.FC = () => {
             CONFIGURE YOUR FIBC BAG
           </h2>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-            8-Step Industrial CAD Configurator
+            FIBC Bag Configurator
           </p>
         </div>
         <button
@@ -155,55 +172,35 @@ export const ConfiguratorPanel: React.FC = () => {
         <span>{isGenerating ? 'Synthesizing with Gemini AI...' : 'Generate Image'}</span>
       </button>
 
-      {/* 8 MASTER ACCORDION SECTIONS */}
+      {/* CONFIGURATOR SECTIONS */}
       <div className="space-y-3">
         
-        {/* STEP 1: BAG CONSTRUCTION & BAFFLES */}
+        {/* 1. BASE BAG TYPE (Pruned to match reference folder images) */}
         <AccordionCard
           stepNumber={1}
-          title="BAG CONSTRUCTION & BAFFLES"
-          valueDisplay={config.bagType || 'None'}
+          title="BASE BAG TYPE"
+          valueDisplay={config.bagType || 'Not Selected'}
           icon={<Box className="w-4 h-4 text-pegma-red" />}
         >
           <div className="grid grid-cols-1 gap-2">
-            
-            {/* Deselect / Clear Card */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsCustomBagType(false);
-                updateConfig('bagType', 'None');
-              }}
-              className={`p-2 rounded-xl border flex items-center justify-between text-xs font-bold transition ${
-                !config.bagType || config.bagType === 'None'
-                  ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              <span>Unselect (No Specific Bag Type)</span>
-              <X className="w-3.5 h-3.5" />
-            </button>
-
             {[
-              { label: 'U-Panel', desc: 'Single U-shaped body panel, two vertical side seams' },
-              { label: '4-Panel', desc: 'Heavy duty, four separate side panels for maximum cubic form' },
-              { label: 'Circular / Tubular', desc: 'Seamless circular woven body, zero vertical side seams' },
-              { label: 'Baffle Bag (Q-Bag)', desc: 'Internal fabric baffles across four corners preventing side bulging' },
-              { label: 'Circular Baffle', desc: 'Seamless tubular outer body fitted with internal corner baffles' },
-              { label: 'Net Baffle Bag', desc: 'Internal heavy-duty polypropylene net-mesh baffles for free flow' },
-              { label: 'Tie Baffle', desc: 'Internal fabric tie-strap baffles securing corner shape' },
-              { label: '2-Panel Bag', desc: 'Two main fabric panels forming front, back, and base' },
-              { label: 'Single Loop / Double Loop', desc: 'Overhead single or dual continuous lifting loop construction' },
-              { label: 'Asbestos Plate Bag', desc: 'Flat rectangular heavy duty bag for asbestos sheet disposal' },
-              { label: 'Drum Bag', desc: 'Cylindrical round-base bulk bag for standard drum insertion' },
-              { label: 'Fabric (PP Woven)', desc: 'High-tenacity woven polypropylene fabric rolls' },
+              { label: 'U Panel', refFile: 'upanel.png', desc: 'Single U-shaped body panel, two vertical side seams' },
+              { label: '4 Panel', refFile: '4panel.png', desc: 'Heavy duty, four separate side panels for maximum cubic form' },
+              { label: 'Circular', refFile: 'circular.png', desc: 'Seamless circular woven body, zero vertical side seams' },
+              { label: 'Baffle Bag', refFile: 'baffle.png', desc: 'Internal fabric baffles across four corners preventing side bulging' },
+              { label: 'Net Baffle Bag', refFile: 'netbaffle.png', desc: 'Internal heavy-duty polypropylene net-mesh baffles for free flow' },
+              { label: '2 Panel Bag', refFile: 'u+2panel.png', desc: 'Two main fabric panels forming front, back, and base' },
+              { label: 'Drum Bag', refFile: 'drum.png', desc: 'Cylindrical round-base bulk bag for standard drum insertion' },
+              { label: 'Asbestos Plate Bag', refFile: 'asbestos.png', desc: 'Flat rectangular heavy duty bag for asbestos sheet disposal' },
+              { label: 'Food Grade Bag', refFile: 'foodgrade.png', desc: 'Pharma & Food Grade certified ultra-clean room manufacturing' },
+              { label: 'UN Certified Bag', refFile: 'uncertified.png', desc: 'Certified hazardous materials transport packaging' },
             ].map((type) => {
               const isSelected = !isCustomBagType && config.bagType === type.label;
               return (
-                <label
+                <div
                   key={type.label}
-                  onClick={() => toggleOption('bagType', type.label, () => setIsCustomBagType(false))}
-                  className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition ${
+                  onClick={() => toggleSingleConfig('bagType', type.label, setIsCustomBagType)}
+                  className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition select-none ${
                     isSelected
                       ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10 text-pegma-dark dark:text-white'
                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
@@ -213,36 +210,44 @@ export const ConfiguratorPanel: React.FC = () => {
                     type="radio"
                     name="bagType"
                     checked={isSelected}
-                    onChange={() => {}}
-                    className="mt-0.5 text-pegma-red focus:ring-pegma-red"
+                    readOnly
+                    className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
                   />
-                  <div>
+                  <div className="flex-1">
                     <div className="text-xs font-bold">{type.label}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{type.desc}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{type.desc}</div>
                   </div>
-                </label>
+                </div>
               );
             })}
 
             <div className={`p-2.5 rounded-xl border transition ${
               isCustomBagType ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
             }`}>
-              <label className="flex items-center space-x-2 cursor-pointer mb-1.5">
+              <div 
+                onClick={() => {
+                  if (isCustomBagType) {
+                    setIsCustomBagType(false);
+                    updateConfig('bagType', '');
+                  } else {
+                    setIsCustomBagType(true);
+                    if (customBagTypeInput.trim()) updateConfig('bagType', customBagTypeInput.trim());
+                  }
+                }}
+                className="flex items-center space-x-2 cursor-pointer mb-1.5 select-none"
+              >
                 <input
                   type="radio"
                   name="bagType"
                   checked={isCustomBagType}
-                  onChange={() => {
-                    setIsCustomBagType(true);
-                    if (customBagTypeInput.trim()) updateConfig('bagType', customBagTypeInput.trim());
-                  }}
-                  className="text-pegma-red focus:ring-pegma-red"
+                  readOnly
+                  className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                 />
                 <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                   <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Custom Construction / Baffle Spec...</span>
+                  <span>Custom Construction Spec...</span>
                 </span>
-              </label>
+              </div>
               {isCustomBagType && (
                 <input
                   type="text"
@@ -260,37 +265,28 @@ export const ConfiguratorPanel: React.FC = () => {
           </div>
         </AccordionCard>
 
-        {/* STEP 2: CAPACITY & FABRIC SPECS */}
+        {/* 2. CAPACITY, FABRIC COLOUR & FABRIC DENSITY */}
         <AccordionCard
           stepNumber={2}
-          title="CAPACITY & FABRIC SPECS"
-          valueDisplay={`${config.capacity || 'None'} • ${config.fabricColor || 'White'} • ${config.gsm || '180 GSM'}`}
+          title="CAPACITY, FABRIC COLOUR & DENSITY"
+          valueDisplay={`${config.capacity || 'None'} • ${config.fabricColor || 'None'} • ${config.gsm || 'None'}`}
           icon={<Weight className="w-4 h-4 text-blue-500" />}
         >
           <div className="space-y-4">
             
             {/* SWL Capacity */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Safe Working Load (SWL)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('capacity', 'None')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Clear Capacity
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Safe Working Load (SWL Capacity)
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
-                {['500 kg', '1000 kg', '1250 kg', '1500 kg', '2000 kg'].map((cap) => {
+                {['250 kg', '500 kg', '750 kg', '1000 kg', '1250 kg', '1500 kg', '2000 kg'].map((cap) => {
                   const isSelected = !isCustomCapacity && config.capacity === cap;
                   return (
-                    <label
+                    <div
                       key={cap}
-                      onClick={() => toggleOption('capacity', cap, () => setIsCustomCapacity(false))}
-                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                      onClick={() => toggleSingleConfig('capacity', cap, setIsCustomCapacity)}
+                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -301,34 +297,42 @@ export const ConfiguratorPanel: React.FC = () => {
                         type="radio"
                         name="capacity"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                    </label>
+                    </div>
                   );
                 })}
 
                 <div className={`p-2 rounded-xl border transition ${isCustomCapacity ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                  <div 
+                    onClick={() => {
+                      if (isCustomCapacity) {
+                        setIsCustomCapacity(false);
+                        updateConfig('capacity', '');
+                      } else {
+                        setIsCustomCapacity(true);
+                        if (customCapacityInput.trim()) updateConfig('capacity', customCapacityInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
                       name="capacity"
                       checked={isCustomCapacity}
-                      onChange={() => {
-                        setIsCustomCapacity(true);
-                        if (customCapacityInput.trim()) updateConfig('capacity', customCapacityInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
                       <span>Custom Capacity (SWL)...</span>
                     </span>
-                  </label>
+                  </div>
                   {isCustomCapacity && (
                     <input
                       type="text"
-                      placeholder="Type custom SWL..."
+                      placeholder="Type custom SWL (e.g. 3000 kg)..."
                       value={customCapacityInput}
                       onChange={(e) => {
                         setCustomCapacityInput(e.target.value);
@@ -342,28 +346,19 @@ export const ConfiguratorPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Fabric Color */}
+            {/* Fabric Colour */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Fabric Color
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('fabricColor', 'White')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Clear (Default White)
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Fabric Colour
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
-                {['White', 'Beige / Tan', 'Black', 'Blue', 'Green'].map((col) => {
+                {['White', 'Black', 'Beige', 'Blue', 'Green', 'Yellow', 'Red', 'Orange'].map((col) => {
                   const isSelected = !isCustomFabricColor && config.fabricColor === col;
                   return (
-                    <label
+                    <div
                       key={col}
-                      onClick={() => toggleOption('fabricColor', col, () => setIsCustomFabricColor(false))}
-                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                      onClick={() => toggleSingleConfig('fabricColor', col, setIsCustomFabricColor)}
+                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -374,34 +369,42 @@ export const ConfiguratorPanel: React.FC = () => {
                         type="radio"
                         name="fabricColor"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                    </label>
+                    </div>
                   );
                 })}
 
                 <div className={`p-2 rounded-xl border transition ${isCustomFabricColor ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                  <div 
+                    onClick={() => {
+                      if (isCustomFabricColor) {
+                        setIsCustomFabricColor(false);
+                        updateConfig('fabricColor', '');
+                      } else {
+                        setIsCustomFabricColor(true);
+                        if (customFabricColorInput.trim()) updateConfig('fabricColor', customFabricColorInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
                       name="fabricColor"
                       checked={isCustomFabricColor}
-                      onChange={() => {
-                        setIsCustomFabricColor(true);
-                        if (customFabricColorInput.trim()) updateConfig('fabricColor', customFabricColorInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Fabric Color...</span>
+                      <span>Custom Colour...</span>
                     </span>
-                  </label>
+                  </div>
                   {isCustomFabricColor && (
                     <input
                       type="text"
-                      placeholder="Type custom color..."
+                      placeholder="Type custom fabric colour..."
                       value={customFabricColorInput}
                       onChange={(e) => {
                         setCustomFabricColorInput(e.target.value);
@@ -415,28 +418,19 @@ export const ConfiguratorPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Fabric GSM */}
+            {/* Fabric Density (GSM) */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Fabric Density (GSM)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('gsm', '180 GSM')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Clear (Default 180 GSM)
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Fabric Density (GSM)
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
-                {['140 GSM', '160 GSM', '180 GSM', '200 GSM', '220 GSM'].map((gsmVal) => {
+                {['130 GSM', '140 GSM', '150 GSM', '160 GSM', '170 GSM', '180 GSM', '190 GSM', '200 GSM'].map((gsmVal) => {
                   const isSelected = !isCustomGsm && config.gsm === gsmVal;
                   return (
-                    <label
+                    <div
                       key={gsmVal}
-                      onClick={() => toggleOption('gsm', gsmVal, () => setIsCustomGsm(false))}
-                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                      onClick={() => toggleSingleConfig('gsm', gsmVal, setIsCustomGsm)}
+                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -447,30 +441,38 @@ export const ConfiguratorPanel: React.FC = () => {
                         type="radio"
                         name="gsm"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                    </label>
+                    </div>
                   );
                 })}
 
                 <div className={`p-2 rounded-xl border transition ${isCustomGsm ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                  <div 
+                    onClick={() => {
+                      if (isCustomGsm) {
+                        setIsCustomGsm(false);
+                        updateConfig('gsm', '');
+                      } else {
+                        setIsCustomGsm(true);
+                        if (customGsmInput.trim()) updateConfig('gsm', customGsmInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
                       name="gsm"
                       checked={isCustomGsm}
-                      onChange={() => {
-                        setIsCustomGsm(true);
-                        if (customGsmInput.trim()) updateConfig('gsm', customGsmInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Fabric GSM...</span>
+                      <span>Custom GSM...</span>
                     </span>
-                  </label>
+                  </div>
                   {isCustomGsm && (
                     <input
                       type="text"
@@ -491,41 +493,25 @@ export const ConfiguratorPanel: React.FC = () => {
           </div>
         </AccordionCard>
 
-        {/* STEP 3: ELECTROSTATIC SAFETY RATING */}
+        {/* 3. ELECTRICAL SAFETY TYPE */}
         <AccordionCard
           stepNumber={3}
-          title="ELECTROSTATIC SAFETY RATING"
-          valueDisplay={config.electrostaticType || 'Type A'}
+          title="ELECTRICAL SAFETY TYPE"
+          valueDisplay={config.electrostaticType || 'Not Selected'}
           icon={<Zap className="w-4 h-4 text-amber-500" />}
         >
           <div className="grid grid-cols-1 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsCustomElectro(false);
-                updateConfig('electrostaticType', 'Type A');
-              }}
-              className={`p-2 rounded-xl border flex items-center justify-between text-xs font-bold transition ${
-                !config.electrostaticType || config.electrostaticType === 'Type A' || config.electrostaticType === 'None'
-                  ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              <span>Unselect (Default Type A Standard)</span>
-              <X className="w-3.5 h-3.5" />
-            </button>
-
             {[
-              { label: 'Type A', desc: 'Standard non-conductive woven fabric without static protection' },
-              { label: 'Type B', desc: 'Low breakdown voltage (<6kV) to prevent propagating brush discharges' },
-              { label: 'Conductive Type C', desc: 'Interwoven black conductive carbon grid threads with yellow grounding tabs' },
+              { label: 'Type A', desc: 'Standard non-conductive fabric without static protection' },
+              { label: 'Type B', desc: 'Low breakdown voltage (<6kV) preventing propagating brush discharges' },
+              { label: 'Conductive Type C', desc: 'Interwoven conductive carbon grid threads with grounding tabs' },
             ].map((electro) => {
-              const isSelected = !isCustomElectro && (config.electrostaticType || 'Type A') === electro.label;
+              const isSelected = !isCustomElectro && config.electrostaticType === electro.label;
               return (
-                <label
+                <div
                   key={electro.label}
-                  onClick={() => toggleOption('electrostaticType', electro.label, () => setIsCustomElectro(false))}
-                  className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition ${
+                  onClick={() => toggleSingleConfig('electrostaticType', electro.label, setIsCustomElectro)}
+                  className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition select-none ${
                     isSelected
                       ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10 text-pegma-dark dark:text-white'
                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
@@ -535,40 +521,48 @@ export const ConfiguratorPanel: React.FC = () => {
                     type="radio"
                     name="electrostaticType"
                     checked={isSelected}
-                    onChange={() => {}}
-                    className="mt-0.5 text-pegma-red focus:ring-pegma-red"
+                    readOnly
+                    className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
                   />
                   <div>
                     <div className="text-xs font-bold">{electro.label}</div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400">{electro.desc}</div>
                   </div>
-                </label>
+                </div>
               );
             })}
 
             <div className={`p-2.5 rounded-xl border transition ${
               isCustomElectro ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
             }`}>
-              <label className="flex items-center space-x-2 cursor-pointer mb-1.5">
+              <div 
+                onClick={() => {
+                  if (isCustomElectro) {
+                    setIsCustomElectro(false);
+                    updateConfig('electrostaticType', '');
+                  } else {
+                    setIsCustomElectro(true);
+                    if (customElectroInput.trim()) updateConfig('electrostaticType', customElectroInput.trim());
+                  }
+                }}
+                className="flex items-center space-x-2 cursor-pointer mb-1.5 select-none"
+              >
                 <input
                   type="radio"
                   name="electrostaticType"
                   checked={isCustomElectro}
-                  onChange={() => {
-                    setIsCustomElectro(true);
-                    if (customElectroInput.trim()) updateConfig('electrostaticType', customElectroInput.trim());
-                  }}
-                  className="text-pegma-red focus:ring-pegma-red"
+                  readOnly
+                  className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                 />
                 <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                   <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Custom Electrostatic Spec...</span>
+                  <span>Custom Electrical Spec...</span>
                 </span>
-              </label>
+              </div>
               {isCustomElectro && (
                 <input
                   type="text"
-                  placeholder="Type custom antistatic spec..."
+                  placeholder="Type custom electrical spec..."
                   value={customElectroInput}
                   onChange={(e) => {
                     setCustomElectroInput(e.target.value);
@@ -582,216 +576,117 @@ export const ConfiguratorPanel: React.FC = () => {
           </div>
         </AccordionCard>
 
-        {/* STEP 4: TOP & BOTTOM MECHANISMS */}
+        {/* 4. SIFT PROOF LEVEL */}
         <AccordionCard
           stepNumber={4}
-          title="TOP & BOTTOM MECHANISMS"
-          valueDisplay={`${config.top || 'None'} • ${config.bottom || 'None'}`}
-          icon={<Maximize2 className="w-4 h-4 text-emerald-500" />}
+          title="SIFT PROOF LEVEL"
+          valueDisplay={config.siftProofing || 'Not Selected'}
+          icon={<Shield className="w-4 h-4 text-emerald-500" />}
         >
-          <div className="space-y-4">
-            
-            {/* Top Opening */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Top Opening Mechanism
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('top', 'Open Top')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+          <div className="grid grid-cols-1 gap-2">
+            {[
+              { label: 'None', desc: 'Standard multi-row structural seam stitching without cords' },
+              { label: 'Single Sift Proof', desc: 'Single felt cord stitched along vertical seams' },
+              { label: 'Double Sift Proof', desc: 'Double felt filler cord along all seams' },
+              { label: 'Triple Sift Proof', desc: 'Triple-sealed seams with filler cords & lamination' },
+              { label: 'Dust Proof Stitching', desc: 'Felt seam sealing tape stitched along structural seams' },
+            ].map((sft) => {
+              const isSelected = !isCustomSift && config.siftProofing === sft.label;
+              return (
+                <div
+                  key={sft.label}
+                  onClick={() => toggleSingleConfig('siftProofing', sft.label, setIsCustomSift)}
+                  className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition select-none ${
+                    isSelected
+                      ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10 text-pegma-dark dark:text-white'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                  }`}
                 >
-                  Unselect / Open Top
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-1.5">
-                {[
-                  { label: 'Duffle Top', desc: 'Drawstring tie closure skirt' },
-                  { label: 'Filling Spout', desc: 'Cylindrical hopper loading spout' },
-                  { label: 'Open Top', desc: 'Hemmed open top' },
-                  { label: 'Discharge Spout Top', desc: 'Top spout mechanism' },
-                ].map((tp) => {
-                  const isSelected = !isCustomTop && config.top === tp.label;
-                  return (
-                    <label
-                      key={tp.label}
-                      onClick={() => toggleOption('top', tp.label, () => setIsCustomTop(false))}
-                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
-                        isSelected
-                          ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="topType"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        className="mt-0.5 text-pegma-red focus:ring-pegma-red"
-                      />
-                      <div>
-                        <div>{tp.label}</div>
-                        <div className="text-[10px] text-slate-500 font-normal">{tp.desc}</div>
-                      </div>
-                    </label>
-                  );
-                })}
-
-                <div className={`p-2 rounded-xl border transition ${isCustomTop ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
-                    <input
-                      type="radio"
-                      name="topType"
-                      checked={isCustomTop}
-                      onChange={() => {
-                        setIsCustomTop(true);
-                        if (customTopInput.trim()) updateConfig('top', customTopInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
-                    />
-                    <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
-                      <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Top Mechanism...</span>
-                    </span>
-                  </label>
-                  {isCustomTop && (
-                    <input
-                      type="text"
-                      placeholder="Type custom top..."
-                      value={customTopInput}
-                      onChange={(e) => {
-                        setCustomTopInput(e.target.value);
-                        if (e.target.value.trim()) updateConfig('top', e.target.value.trim());
-                      }}
-                      className="w-full px-3 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
-                      autoFocus
-                    />
-                  )}
+                  <input
+                    type="radio"
+                    name="siftProofing"
+                    checked={isSelected}
+                    readOnly
+                    className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
+                  />
+                  <div>
+                    <div className="text-xs font-bold">{sft.label}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{sft.desc}</div>
+                  </div>
                 </div>
+              );
+            })}
+
+            <div className={`p-2.5 rounded-xl border transition ${
+              isCustomSift ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+            }`}>
+              <div 
+                onClick={() => {
+                  if (isCustomSift) {
+                    setIsCustomSift(false);
+                    updateConfig('siftProofing', '');
+                  } else {
+                    setIsCustomSift(true);
+                    if (customSiftInput.trim()) updateConfig('siftProofing', customSiftInput.trim());
+                  }
+                }}
+                className="flex items-center space-x-2 cursor-pointer mb-1.5 select-none"
+              >
+                <input
+                  type="radio"
+                  name="siftProofing"
+                  checked={isCustomSift}
+                  readOnly
+                  className="text-pegma-red focus:ring-pegma-red pointer-events-none"
+                />
+                <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
+                  <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Custom Sift Proof Spec...</span>
+                </span>
               </div>
+              {isCustomSift && (
+                <input
+                  type="text"
+                  placeholder="Type custom seam sealing..."
+                  value={customSiftInput}
+                  onChange={(e) => {
+                    setCustomSiftInput(e.target.value);
+                    if (e.target.value.trim()) updateConfig('siftProofing', e.target.value.trim());
+                  }}
+                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
+                  autoFocus
+                />
+              )}
             </div>
-
-            {/* Bottom Discharge */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Bottom Discharge Mechanism
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('bottom', 'Flat Bottom')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Unselect / Flat Bottom
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-1.5">
-                {[
-                  { label: 'Discharge Spout', desc: 'Prominently extending discharge spout with closure tie' },
-                  { label: 'Flat Bottom', desc: 'Completely closed flat base for pallet stability' },
-                  { label: 'Discharge Spout with Petal Closure', desc: 'Discharge spout protected by star/petal cover flaps' },
-                  { label: 'Full Bottom Open', desc: 'Drop-bottom release flap' },
-                ].map((bt) => {
-                  const isSelected = !isCustomBottom && config.bottom === bt.label;
-                  return (
-                    <label
-                      key={bt.label}
-                      onClick={() => toggleOption('bottom', bt.label, () => setIsCustomBottom(false))}
-                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
-                        isSelected
-                          ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="bottomType"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        className="mt-0.5 text-pegma-red focus:ring-pegma-red"
-                      />
-                      <div>
-                        <div>{bt.label}</div>
-                        <div className="text-[10px] text-slate-500 font-normal">{bt.desc}</div>
-                      </div>
-                    </label>
-                  );
-                })}
-
-                <div className={`p-2 rounded-xl border transition ${isCustomBottom ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
-                    <input
-                      type="radio"
-                      name="bottomType"
-                      checked={isCustomBottom}
-                      onChange={() => {
-                        setIsCustomBottom(true);
-                        if (customBottomInput.trim()) updateConfig('bottom', customBottomInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
-                    />
-                    <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
-                      <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Bottom Mechanism...</span>
-                    </span>
-                  </label>
-                  {isCustomBottom && (
-                    <input
-                      type="text"
-                      placeholder="Type custom bottom..."
-                      value={customBottomInput}
-                      onChange={(e) => {
-                        setCustomBottomInput(e.target.value);
-                        if (e.target.value.trim()) updateConfig('bottom', e.target.value.trim());
-                      }}
-                      className="w-full px-3 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
-                      autoFocus
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
           </div>
         </AccordionCard>
 
-        {/* STEP 5: LIFTING LOOPS & WEBBING */}
+        {/* 5. LOOP CONFIGURATION & LOOP COLOUR (Pruned to match reference folder images) */}
         <AccordionCard
           stepNumber={5}
-          title="LIFTING LOOPS & WEBBING"
-          valueDisplay={`${config.loopType || 'None'} (${config.loopColor || 'Default'})`}
+          title="LOOP CONFIGURATION & COLOUR"
+          valueDisplay={`${config.loopType || 'None'} (${config.loopColor || 'None'})`}
           icon={<Layers className="w-4 h-4 text-purple-500" />}
         >
           <div className="space-y-4">
             
-            {/* Loop Style */}
+            {/* Loop Configuration */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Loop Attachment Style
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('loopType', 'None')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Unselect / Clear
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Loop Design / Configuration
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
                 {[
-                  { label: 'Cross Corner', desc: 'Loops attached across corners for easy forklift loading' },
-                  { label: 'Corner Loops', desc: 'Straps sewn along vertical corner seams' },
-                  { label: 'Single Loop', desc: 'Central single loop for crane hook lifting' },
-                  { label: 'Two Loops', desc: 'Dual overhead lifting straps' },
+                  { label: 'Single Loop', refFile: 'singleloop.png', desc: 'Central single loop for crane hook lifting' },
+                  { label: 'Double Loop', refFile: 'doubleloop.png', desc: 'Dual overhead lifting straps' },
+                  { label: 'Cross Corner Loops', refFile: 'crosscornerloop.png', desc: 'Loops attached across corners for easy forklift loading' },
                 ].map((lt) => {
                   const isSelected = !isCustomLoopType && config.loopType === lt.label;
                   return (
-                    <label
+                    <div
                       key={lt.label}
-                      onClick={() => toggleOption('loopType', lt.label, () => setIsCustomLoopType(false))}
-                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                      onClick={() => toggleSingleConfig('loopType', lt.label, setIsCustomLoopType)}
+                      className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -801,38 +696,46 @@ export const ConfiguratorPanel: React.FC = () => {
                         type="radio"
                         name="loopType"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="mt-0.5 text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                      <div>
-                        <div>{lt.label}</div>
-                        <div className="text-[10px] text-slate-500 font-normal">{lt.desc}</div>
+                      <div className="flex-1">
+                        <div className="text-xs font-bold">{lt.label}</div>
+                        <div className="text-[10px] text-slate-500 font-normal mt-0.5">{lt.desc}</div>
                       </div>
-                    </label>
+                    </div>
                   );
                 })}
 
                 <div className={`p-2 rounded-xl border transition ${isCustomLoopType ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                  <div 
+                    onClick={() => {
+                      if (isCustomLoopType) {
+                        setIsCustomLoopType(false);
+                        updateConfig('loopType', '');
+                      } else {
+                        setIsCustomLoopType(true);
+                        if (customLoopTypeInput.trim()) updateConfig('loopType', customLoopTypeInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
                       name="loopType"
                       checked={isCustomLoopType}
-                      onChange={() => {
-                        setIsCustomLoopType(true);
-                        if (customLoopTypeInput.trim()) updateConfig('loopType', customLoopTypeInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Loop Style...</span>
+                      <span>Custom Loop Configuration...</span>
                     </span>
-                  </label>
+                  </div>
                   {isCustomLoopType && (
                     <input
                       type="text"
-                      placeholder="Type custom loop style..."
+                      placeholder="Type custom loop config..."
                       value={customLoopTypeInput}
                       onChange={(e) => {
                         setCustomLoopTypeInput(e.target.value);
@@ -846,28 +749,19 @@ export const ConfiguratorPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Loop Color */}
+            {/* Loop Colour */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Loop Strap Color
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('loopColor', 'None')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Unselect / Clear Color
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Loop Strap Colour
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
-                {['Blue', 'White', 'Black', 'Red', 'Green'].map((lc) => {
+                {['Blue', 'White', 'Black', 'Red', 'Green', 'Yellow', 'Orange'].map((lc) => {
                   const isSelected = !isCustomLoopColor && config.loopColor === lc;
                   return (
-                    <label
+                    <div
                       key={lc}
-                      onClick={() => toggleOption('loopColor', lc, () => setIsCustomLoopColor(false))}
-                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                      onClick={() => toggleSingleConfig('loopColor', lc, setIsCustomLoopColor)}
+                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -878,34 +772,42 @@ export const ConfiguratorPanel: React.FC = () => {
                         type="radio"
                         name="loopColor"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                    </label>
+                    </div>
                   );
                 })}
 
                 <div className={`p-2 rounded-xl border transition ${isCustomLoopColor ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                  <div 
+                    onClick={() => {
+                      if (isCustomLoopColor) {
+                        setIsCustomLoopColor(false);
+                        updateConfig('loopColor', '');
+                      } else {
+                        setIsCustomLoopColor(true);
+                        if (customLoopColorInput.trim()) updateConfig('loopColor', customLoopColorInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
                       name="loopColor"
                       checked={isCustomLoopColor}
-                      onChange={() => {
-                        setIsCustomLoopColor(true);
-                        if (customLoopColorInput.trim()) updateConfig('loopColor', customLoopColorInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Loop Color...</span>
+                      <span>Custom Loop Colour...</span>
                     </span>
-                  </label>
+                  </div>
                   {isCustomLoopColor && (
                     <input
                       type="text"
-                      placeholder="Type custom loop color..."
+                      placeholder="Type custom loop colour..."
                       value={customLoopColorInput}
                       onChange={(e) => {
                         setCustomLoopColorInput(e.target.value);
@@ -922,49 +824,34 @@ export const ConfiguratorPanel: React.FC = () => {
           </div>
         </AccordionCard>
 
-        {/* STEP 6: INNER LINERS & SIFT-PROOFING */}
+        {/* 6. TOP OPENING & BOTTOM DISCHARGE (Pruned to match reference folder images) */}
         <AccordionCard
           stepNumber={6}
-          title="INNER LINERS & SIFT-PROOFING"
-          valueDisplay={config.linerType || 'No Liner'}
-          icon={<Container className="w-4 h-4 text-indigo-500" />}
+          title="TOP OPENING & BOTTOM DISCHARGE"
+          valueDisplay={`${config.top || 'None'} • ${config.bottom || 'None'}`}
+          icon={<Maximize2 className="w-4 h-4 text-emerald-500" />}
         >
           <div className="space-y-4">
             
-            {/* Inner Liner */}
+            {/* Top Opening */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Inner Barrier Liner
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('linerType', 'No Liner')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Unselect / No Liner
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Top Opening Mechanism
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
                 {[
-                  { label: 'No Liner', desc: 'Direct fabric containment' },
-                  { label: 'Liner bag-Loose', desc: 'Clear PE liner inserted loosely' },
-                  { label: 'Liner bag-Glued', desc: 'PE liner spot-glued to internal walls' },
-                  { label: 'Liner bag-Tabbed', desc: 'Inner PE liner tied to corner tabs' },
-                  { label: 'In House Liner Forming', desc: 'Custom 3D form-fitted PE liner' },
-                  { label: 'Stranded Liner/Antistatic', desc: 'Static dissipative antistatic translucent liner' },
-                  { label: 'Foil Liner', desc: 'Multi-layer aluminum foil moisture & gas barrier' },
-                  { label: 'Black Conductive Liner', desc: 'Carbon-black conductive PE liner' },
-                  { label: 'Baffle Liner', desc: 'Baffled form-fit inner liner' },
-                  { label: 'Suspended Liner', desc: 'Inner liner suspended from top loops' },
-                  { label: 'Bulk Container Liner', desc: 'Large 20ft/40ft shipping container liner' },
-                ].map((lnr) => {
-                  const isSelected = !isCustomLiner && (config.linerType || 'No Liner') === lnr.label;
+                  { label: 'Open Top', refFile: 'opentop.png', desc: 'Hemmed open top' },
+                  { label: 'Filling Spout', refFile: 'fillingspout.png', desc: 'Cylindrical hopper loading spout' },
+                  { label: 'Duffle Top', refFile: 'duffletop.png', desc: 'Drawstring tie closure skirt' },
+                  { label: 'Skirt Top', refFile: 'skirttop.png', desc: 'Wide skirt top opening' },
+                  { label: 'Conical Top', refFile: 'conicaltop.png', desc: 'Tapered conical inlet top' },
+                ].map((tp) => {
+                  const isSelected = !isCustomTop && config.top === tp.label;
                   return (
-                    <label
-                      key={lnr.label}
-                      onClick={() => toggleOption('linerType', lnr.label, () => setIsCustomLiner(false))}
-                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                    <div
+                      key={tp.label}
+                      onClick={() => toggleSingleConfig('top', tp.label, setIsCustomTop)}
+                      className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -972,44 +859,52 @@ export const ConfiguratorPanel: React.FC = () => {
                     >
                       <input
                         type="radio"
-                        name="linerType"
+                        name="topType"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="mt-0.5 text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                      <div>
-                        <div>{lnr.label}</div>
-                        <div className="text-[10px] text-slate-500 font-normal">{lnr.desc}</div>
+                      <div className="flex-1">
+                        <div className="text-xs font-bold">{tp.label}</div>
+                        <div className="text-[10px] text-slate-500 font-normal mt-0.5">{tp.desc}</div>
                       </div>
-                    </label>
+                    </div>
                   );
                 })}
 
-                <div className={`p-2 rounded-xl border transition ${isCustomLiner ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                <div className={`p-2 rounded-xl border transition ${isCustomTop ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                  <div 
+                    onClick={() => {
+                      if (isCustomTop) {
+                        setIsCustomTop(false);
+                        updateConfig('top', '');
+                      } else {
+                        setIsCustomTop(true);
+                        if (customTopInput.trim()) updateConfig('top', customTopInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
-                      name="linerType"
-                      checked={isCustomLiner}
-                      onChange={() => {
-                        setIsCustomLiner(true);
-                        if (customLinerInput.trim()) updateConfig('linerType', customLinerInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      name="topType"
+                      checked={isCustomTop}
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Inner Liner...</span>
+                      <span>Custom Top Mechanism...</span>
                     </span>
-                  </label>
-                  {isCustomLiner && (
+                  </div>
+                  {isCustomTop && (
                     <input
                       type="text"
-                      placeholder="Type custom liner spec..."
-                      value={customLinerInput}
+                      placeholder="Type custom top mechanism..."
+                      value={customTopInput}
                       onChange={(e) => {
-                        setCustomLinerInput(e.target.value);
-                        if (e.target.value.trim()) updateConfig('linerType', e.target.value.trim());
+                        setCustomTopInput(e.target.value);
+                        if (e.target.value.trim()) updateConfig('top', e.target.value.trim());
                       }}
                       className="w-full px-3 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
                       autoFocus
@@ -1019,34 +914,24 @@ export const ConfiguratorPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Sift-Proofing */}
+            {/* Bottom Discharge */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Seam Sealing & Sift-Proofing
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('siftProofing', 'None')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Unselect / Clear
-                </button>
-              </div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Bottom Discharge Mechanism
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
                 {[
-                  { label: 'Standard Stitching', desc: 'Standard multi-row structural seam stitching' },
-                  { label: 'Sift Proof Single', desc: 'Single felt cord stitched along vertical seams' },
-                  { label: 'Sift Proof Double', desc: 'Double felt filler cord along all seams' },
-                  { label: 'Sift Proof Triple', desc: 'Triple-sealed seams with filler cords & lamination' },
-                  { label: 'Dust Proof Stitching', desc: 'Felt seam sealing tape stitched along structural seams' },
-                ].map((sft) => {
-                  const isSelected = !isCustomSift && (config.siftProofing || 'Standard Stitching') === sft.label;
+                  { label: 'Flat Bottom', refFile: 'flatbottom.png', desc: 'Completely closed flat base for pallet stability' },
+                  { label: 'Discharge Spout', refFile: 'discharge spout.png', desc: 'Prominently extending discharge spout with closure tie' },
+                  { label: 'Conical Bottom', refFile: 'conicalbottom.png', desc: 'Tapered conical discharge base' },
+                  { label: 'Diaper Bottom', refFile: 'diaperbottom.png', desc: 'Protective bottom flap cover' },
+                ].map((bt) => {
+                  const isSelected = !isCustomBottom && config.bottom === bt.label;
                   return (
-                    <label
-                      key={sft.label}
-                      onClick={() => toggleOption('siftProofing', sft.label, () => setIsCustomSift(false))}
-                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                    <div
+                      key={bt.label}
+                      onClick={() => toggleSingleConfig('bottom', bt.label, setIsCustomBottom)}
+                      className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -1054,44 +939,52 @@ export const ConfiguratorPanel: React.FC = () => {
                     >
                       <input
                         type="radio"
-                        name="siftProofing"
+                        name="bottomType"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="mt-0.5 text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
-                      <div>
-                        <div>{sft.label}</div>
-                        <div className="text-[10px] text-slate-500 font-normal">{sft.desc}</div>
+                      <div className="flex-1">
+                        <div className="text-xs font-bold">{bt.label}</div>
+                        <div className="text-[10px] text-slate-500 font-normal mt-0.5">{bt.desc}</div>
                       </div>
-                    </label>
+                    </div>
                   );
                 })}
 
-                <div className={`p-2 rounded-xl border transition ${isCustomSift ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                <div className={`p-2 rounded-xl border transition ${isCustomBottom ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                  <div 
+                    onClick={() => {
+                      if (isCustomBottom) {
+                        setIsCustomBottom(false);
+                        updateConfig('bottom', '');
+                      } else {
+                        setIsCustomBottom(true);
+                        if (customBottomInput.trim()) updateConfig('bottom', customBottomInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
-                      name="siftProofing"
-                      checked={isCustomSift}
-                      onChange={() => {
-                        setIsCustomSift(true);
-                        if (customSiftInput.trim()) updateConfig('siftProofing', customSiftInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      name="bottomType"
+                      checked={isCustomBottom}
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Custom Seam Sealing...</span>
+                      <span>Custom Bottom Mechanism...</span>
                     </span>
-                  </label>
-                  {isCustomSift && (
+                  </div>
+                  {isCustomBottom && (
                     <input
                       type="text"
-                      placeholder="Type custom seam sealing..."
-                      value={customSiftInput}
+                      placeholder="Type custom bottom mechanism..."
+                      value={customBottomInput}
                       onChange={(e) => {
-                        setCustomSiftInput(e.target.value);
-                        if (e.target.value.trim()) updateConfig('siftProofing', e.target.value.trim());
+                        setCustomBottomInput(e.target.value);
+                        if (e.target.value.trim()) updateConfig('bottom', e.target.value.trim());
                       }}
                       className="w-full px-3 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
                       autoFocus
@@ -1104,42 +997,330 @@ export const ConfiguratorPanel: React.FC = () => {
           </div>
         </AccordionCard>
 
-        {/* STEP 7: BRANDING & CERTIFICATIONS */}
+        {/* 7. LINER REQUIRED */}
         <AccordionCard
           stepNumber={7}
-          title="BRANDING & CERTIFICATIONS"
-          valueDisplay={config.printing || 'No Printing'}
+          title="LINER REQUIRED"
+          valueDisplay={config.linerRequired || 'Not Selected'}
+          icon={<Container className="w-4 h-4 text-indigo-500" />}
+        >
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Specify whether an internal plastic or barrier liner is required inside the FIBC bag.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {['Yes', 'No'].map((opt) => {
+                const isSelected = config.linerRequired === opt;
+                return (
+                  <div
+                    key={opt}
+                    onClick={() => toggleSingleConfig('linerRequired', opt)}
+                    className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer font-bold transition select-none ${
+                      isSelected
+                        ? 'border-pegma-red bg-pegma-red/10 text-pegma-red shadow-xs'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        isSelected ? 'border-pegma-red bg-pegma-red text-white' : 'border-slate-300'
+                      }`}>
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                      </div>
+                      <span className="text-sm">{opt}</span>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+                      {opt === 'Yes' ? 'Enables Steps 8 & 9' : 'Direct Fabric'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {!isLinerEnabled && (
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-center space-x-2 text-[11px] text-amber-800 dark:text-amber-300">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>Selecting <b>'Yes'</b> will enable and unlock Steps 8 & 9 (Liner Construction & Material).</span>
+              </div>
+            )}
+          </div>
+        </AccordionCard>
+
+        {/* 8. LINER CONSTRUCTION (Conditional on Liner Required = Yes) */}
+        <AccordionCard
+          stepNumber={8}
+          title="LINER CONSTRUCTION"
+          valueDisplay={isLinerEnabled ? (config.linerConstruction || 'Not Selected') : 'Requires Liner = Yes'}
+          icon={<Layers className="w-4 h-4 text-sky-500" />}
+        >
+          {isLinerEnabled ? (
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { label: 'Loose Liner', desc: 'Clear PE liner inserted loosely into the bag' },
+                { label: 'Glued Liner', desc: 'PE liner spot-glued to internal bag walls' },
+                { label: 'Tabbed Liner', desc: 'Inner PE liner tied securely to corner tabs' },
+                { label: 'Suspended Liner', desc: 'Inner liner suspended from top loops' },
+                { label: 'Baffle Liner', desc: 'Baffled form-fit inner liner maintaining square shape' },
+                { label: 'Bulk Container Liner', desc: 'Large 20ft/40ft shipping container liner' },
+                { label: 'In House Liner Forming', desc: 'Custom 3D form-fitted PE liner' },
+              ].map((lnrConst) => {
+                const isSelected = !isCustomLinerConst && config.linerConstruction === lnrConst.label;
+                return (
+                  <div
+                    key={lnrConst.label}
+                    onClick={() => toggleSingleConfig('linerConstruction', lnrConst.label, setIsCustomLinerConst)}
+                    className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition select-none ${
+                      isSelected
+                        ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10 text-pegma-dark dark:text-white'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="linerConstruction"
+                      checked={isSelected}
+                      readOnly
+                      className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
+                    />
+                    <div>
+                      <div className="text-xs font-bold">{lnrConst.label}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{lnrConst.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className={`p-2.5 rounded-xl border transition ${
+                isCustomLinerConst ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+              }`}>
+                <div 
+                  onClick={() => {
+                    if (isCustomLinerConst) {
+                      setIsCustomLinerConst(false);
+                      updateConfig('linerConstruction', '');
+                    } else {
+                      setIsCustomLinerConst(true);
+                      if (customLinerConstInput.trim()) updateConfig('linerConstruction', customLinerConstInput.trim());
+                    }
+                  }}
+                  className="flex items-center space-x-2 cursor-pointer mb-1.5 select-none"
+                >
+                  <input
+                    type="radio"
+                    name="linerConstruction"
+                    checked={isCustomLinerConst}
+                    readOnly
+                    className="text-pegma-red focus:ring-pegma-red pointer-events-none"
+                  />
+                  <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Custom Liner Construction...</span>
+                  </span>
+                </div>
+                {isCustomLinerConst && (
+                  <input
+                    type="text"
+                    placeholder="Type custom liner construction..."
+                    value={customLinerConstInput}
+                    onChange={(e) => {
+                      setCustomLinerConstInput(e.target.value);
+                      if (e.target.value.trim()) updateConfig('linerConstruction', e.target.value.trim());
+                    }}
+                    className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
+                    autoFocus
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
+              <Lock className="w-6 h-6 text-slate-400 mx-auto" />
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Liner Specs Locked
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Select <b>'Yes'</b> in Step 7 (Liner Required) to enable liner construction configuration.
+              </p>
+            </div>
+          )}
+        </AccordionCard>
+
+        {/* 9. LINER MATERIAL / TYPE (Conditional on Liner Required = Yes) */}
+        <AccordionCard
+          stepNumber={9}
+          title="LINER MATERIAL / TYPE"
+          valueDisplay={isLinerEnabled ? (config.linerMaterial || 'Not Selected') : 'Requires Liner = Yes'}
+          icon={<FileText className="w-4 h-4 text-cyan-500" />}
+        >
+          {isLinerEnabled ? (
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { label: 'Standard PE', desc: 'Standard clear polyethylene barrier liner' },
+                { label: 'Stranded Liner', desc: 'High-strength stranded polyethylene film' },
+                { label: 'Antistatic Liner', desc: 'Static dissipative antistatic translucent liner' },
+                { label: 'Foil Liner', desc: 'Multi-layer aluminum foil moisture & gas barrier' },
+                { label: 'Black Conductive Liner', desc: 'Carbon-black conductive PE liner' },
+              ].map((lnrMat) => {
+                const isSelected = !isCustomLinerMat && config.linerMaterial === lnrMat.label;
+                return (
+                  <div
+                    key={lnrMat.label}
+                    onClick={() => toggleSingleConfig('linerMaterial', lnrMat.label, setIsCustomLinerMat)}
+                    className={`flex items-start space-x-3 p-2.5 rounded-xl border cursor-pointer transition select-none ${
+                      isSelected
+                        ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10 text-pegma-dark dark:text-white'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="linerMaterial"
+                      checked={isSelected}
+                      readOnly
+                      className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
+                    />
+                    <div>
+                      <div className="text-xs font-bold">{lnrMat.label}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{lnrMat.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className={`p-2.5 rounded-xl border transition ${
+                isCustomLinerMat ? 'border-pegma-red bg-pegma-red/5 dark:bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+              }`}>
+                <div 
+                  onClick={() => {
+                    if (isCustomLinerMat) {
+                      setIsCustomLinerMat(false);
+                      updateConfig('linerMaterial', '');
+                    } else {
+                      setIsCustomLinerMat(true);
+                      if (customLinerMatInput.trim()) updateConfig('linerMaterial', customLinerMatInput.trim());
+                    }
+                  }}
+                  className="flex items-center space-x-2 cursor-pointer mb-1.5 select-none"
+                >
+                  <input
+                    type="radio"
+                    name="linerMaterial"
+                    checked={isCustomLinerMat}
+                    readOnly
+                    className="text-pegma-red focus:ring-pegma-red pointer-events-none"
+                  />
+                  <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Custom Liner Material...</span>
+                  </span>
+                </div>
+                {isCustomLinerMat && (
+                  <input
+                    type="text"
+                    placeholder="Type custom liner material..."
+                    value={customLinerMatInput}
+                    onChange={(e) => {
+                      setCustomLinerMatInput(e.target.value);
+                      if (e.target.value.trim()) updateConfig('linerMaterial', e.target.value.trim());
+                    }}
+                    className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pegma-red dark:text-white"
+                    autoFocus
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
+              <Lock className="w-6 h-6 text-slate-400 mx-auto" />
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Material Specs Locked
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Select <b>'Yes'</b> in Step 7 (Liner Required) to enable liner material configuration.
+              </p>
+            </div>
+          )}
+        </AccordionCard>
+
+        {/* 10. BRAND PRINTING & CUSTOM LOGO UPLOAD */}
+        <AccordionCard
+          stepNumber={10}
+          title="BRAND PRINTING & CUSTOM LOGO UPLOAD"
+          valueDisplay={config.logoFileName ? `Uploaded: ${config.logoFileName}` : (config.printing || 'Not Selected')}
           icon={<Printer className="w-4 h-4 text-amber-500" />}
         >
           <div className="space-y-4">
             
-            {/* Brand Printing */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Brand Printing & Logos
+            {/* Custom Logo File Input Box */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                <span>UPLOAD CUSTOM LOGO IMAGE</span>
+                <span className="text-[10px] text-slate-400 font-normal">PNG, JPG, SVG (Max 5MB)</span>
+              </label>
+
+              {config.logoImage ? (
+                <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-pegma-red/40 shadow-xs">
+                  <div className="flex items-center space-x-3">
+                    <img 
+                      src={config.logoImage} 
+                      alt="Uploaded Logo Preview" 
+                      className="w-10 h-10 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-white truncate max-w-[180px]">
+                        {config.logoFileName || 'Custom Logo File'}
+                      </div>
+                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1">
+                        <Check className="w-3 h-3" />
+                        <span>Logo Uploaded & Attached</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCustomLogo}
+                    className="p-1.5 text-slate-400 hover:text-pegma-red hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition"
+                    title="Remove custom logo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-pegma-red cursor-pointer transition text-center group">
+                  <Upload className="w-6 h-6 text-slate-400 group-hover:text-pegma-red transition mb-1" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-pegma-red">
+                    Click to Upload Custom Logo File
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Replaces default logo with your uploaded brand artwork
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFileUpload}
+                    className="hidden"
+                  />
                 </label>
-                <button
-                  type="button"
-                  onClick={() => updateConfig('printing', 'No Printing')}
-                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                >
-                  Unselect / No Printing
-                </button>
-              </div>
+              )}
+            </div>
+
+            {/* Brand Printing Selection */}
+            <div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Brand Printing Text & Preset Logos
+              </label>
               <div className="grid grid-cols-1 gap-1.5">
                 {[
                   { label: 'PEGMA', desc: 'PEGMA official logo & SWL rating' },
-                  { label: 'PEGMA Heavy Duty', desc: 'Heavy industrial specs & hazardous warnings' },
-                  { label: 'PEGMA Pharma Standard', desc: 'Food & Pharma clean room certified print' },
                   { label: 'No Printing', desc: 'Plain fabric surface with no logos or text' },
                 ].map((pr) => {
                   const isSelected = !isCustomPrint && config.printing === pr.label;
                   return (
-                    <label
+                    <div
                       key={pr.label}
-                      onClick={() => toggleOption('printing', pr.label, () => setIsCustomPrint(false))}
-                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition ${
+                      onClick={() => toggleSingleConfig('printing', pr.label, setIsCustomPrint)}
+                      className={`flex items-start space-x-3 p-2 rounded-xl border cursor-pointer text-xs font-bold transition select-none ${
                         isSelected
                           ? 'border-pegma-red bg-pegma-red/10 text-pegma-red'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -1149,38 +1330,46 @@ export const ConfiguratorPanel: React.FC = () => {
                         type="radio"
                         name="printing"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="mt-0.5 text-pegma-red focus:ring-pegma-red"
+                        readOnly
+                        className="mt-0.5 text-pegma-red focus:ring-pegma-red pointer-events-none"
                       />
                       <div>
                         <div>{pr.label}</div>
                         <div className="text-[10px] text-slate-500 font-normal">{pr.desc}</div>
                       </div>
-                    </label>
+                    </div>
                   );
                 })}
 
                 <div className={`p-2 rounded-xl border transition ${isCustomPrint ? 'border-pegma-red bg-pegma-red/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <label className="flex items-center space-x-2 cursor-pointer mb-1">
+                  <div 
+                    onClick={() => {
+                      if (isCustomPrint) {
+                        setIsCustomPrint(false);
+                        updateConfig('printing', '');
+                      } else {
+                        setIsCustomPrint(true);
+                        if (customPrintInput.trim()) updateConfig('printing', customPrintInput.trim());
+                      }
+                    }}
+                    className="flex items-center space-x-2 cursor-pointer mb-1 select-none"
+                  >
                     <input
                       type="radio"
                       name="printing"
                       checked={isCustomPrint}
-                      onChange={() => {
-                        setIsCustomPrint(true);
-                        if (customPrintInput.trim()) updateConfig('printing', customPrintInput.trim());
-                      }}
-                      className="text-pegma-red focus:ring-pegma-red"
+                      readOnly
+                      className="text-pegma-red focus:ring-pegma-red pointer-events-none"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center space-x-1">
                       <Edit3 className="w-3.5 h-3.5 text-slate-400" />
                       <span>Custom Brand Text / Logo...</span>
                     </span>
-                  </label>
+                  </div>
                   {isCustomPrint && (
                     <input
                       type="text"
-                      placeholder="Type custom brand text..."
+                      placeholder="Type custom brand text or logo details..."
                       value={customPrintInput}
                       onChange={(e) => {
                         setCustomPrintInput(e.target.value);
@@ -1194,92 +1383,17 @@ export const ConfiguratorPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Certifications & Add-ons */}
-            <div>
-              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                Add-on Certifications & Features
-              </label>
-              <div className="space-y-1.5">
-                {allAccessories.map((acc) => {
-                  const isChecked = (config.accessories || []).includes(acc.name);
-                  return (
-                    <label
-                      key={acc.name}
-                      onClick={() => toggleAccessory(acc.name)}
-                      className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition ${
-                        isChecked
-                          ? 'border-pegma-red bg-pegma-red/10 text-slate-900 dark:text-white'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="p-1 rounded-lg bg-slate-100 dark:bg-slate-700">
-                          {acc.icon}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold">{acc.name}</div>
-                          <div className="text-[10px] text-slate-500">{acc.desc}</div>
-                        </div>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="rounded text-pegma-red focus:ring-pegma-red"
-                      />
-                    </label>
-                  );
-                })}
-
-                {customAddedAccessories.map((cAcc) => (
-                  <label
-                    key={cAcc}
-                    onClick={() => toggleAccessory(cAcc)}
-                    className="flex items-center justify-between p-2 rounded-xl border border-pegma-red bg-pegma-red/10 text-slate-900 dark:text-white cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Edit3 className="w-3.5 h-3.5 text-pegma-red" />
-                      <span className="text-xs font-bold">{cAcc} (Custom)</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={true}
-                      onChange={() => {}}
-                      className="rounded text-pegma-red focus:ring-pegma-red"
-                    />
-                  </label>
-                ))}
-
-                <form onSubmit={handleAddCustomAccessory} className="pt-1 flex items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Type custom accessory / feature..."
-                    value={customAccessoryInput}
-                    onChange={(e) => setCustomAccessoryInput(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-pegma-red dark:text-white"
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 bg-pegma-red hover:bg-pegma-red-hover text-white font-bold rounded-xl text-xs flex items-center space-x-1 shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
-                  </button>
-                </form>
-              </div>
-            </div>
-
           </div>
         </AccordionCard>
 
-        {/* STEP 8: ADDS / EXTRA SPECIFICATIONS */}
+        {/* 11. EXTRA CUSTOMIZATION */}
         <AccordionCard
-          stepNumber={8}
-          title="ADDS / EXTRA SPECIFICATIONS"
+          stepNumber={11}
+          title="EXTRA CUSTOMIZATION"
           valueDisplay={
             (config.accessories || []).length > 0
-              ? `${(config.accessories || []).length} Active Extra(s)`
-              : 'Extra Engineering Notes'
+              ? `${(config.accessories || []).length} Active Specification(s)`
+              : 'Notes & Extra Features'
           }
           icon={<FileSpreadsheet className="w-4 h-4 text-emerald-500" />}
         >
@@ -1290,7 +1404,7 @@ export const ConfiguratorPanel: React.FC = () => {
               <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    ACTIVE EXTRAS & SPECIFICATIONS ({(config.accessories || []).length})
+                    ACTIVE EXTRA SPECIFICATIONS ({(config.accessories || []).length})
                   </span>
                   <button
                     onClick={() => updateConfig('accessories', [])}
@@ -1308,7 +1422,7 @@ export const ConfiguratorPanel: React.FC = () => {
                       <span>{item}</span>
                       <button
                         type="button"
-                        onClick={() => toggleAccessory(item)}
+                        onClick={() => toggleExtraItem(item)}
                         className="p-0.5 rounded-md hover:bg-pegma-red hover:text-white transition"
                         title={`Remove ${item}`}
                       >
@@ -1322,12 +1436,12 @@ export const ConfiguratorPanel: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                Add Custom Notes & Technical Specifications
+                Add Custom Notes & Extra Customization Specifications
               </label>
               <form onSubmit={handleAddExtraNotes} className="space-y-2">
                 <textarea
                   rows={3}
-                  placeholder="Type any extra information, custom dimensions (e.g. 90x90x120 cm), special handling notes, thread matching specs..."
+                  placeholder="Type any extra customization information, custom dimensions (e.g. 90x90x120 cm), special handling notes, thread matching specs..."
                   value={extraNotesInput}
                   onChange={(e) => setExtraNotesInput(e.target.value)}
                   className="w-full p-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-pegma-red dark:text-white"
@@ -1345,7 +1459,7 @@ export const ConfiguratorPanel: React.FC = () => {
             {/* Quick Preset Extra Tags */}
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                Quick Add Presets
+                Quick Add Custom Presets
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {[
@@ -1361,7 +1475,7 @@ export const ConfiguratorPanel: React.FC = () => {
                     <button
                       key={tag}
                       type="button"
-                      onClick={() => toggleAccessory(tag)}
+                      onClick={() => toggleExtraItem(tag)}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition flex items-center space-x-1 ${
                         isAdded
                           ? 'border-pegma-red bg-pegma-red text-white'

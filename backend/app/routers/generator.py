@@ -21,7 +21,7 @@ async def generate_fibc_image(
     compiled_prompt = build_gemini_prompt(config)
 
     # 2. Execute Gemini Image generation
-    result = await generate_gemini_image(config, compiled_prompt)
+    result = generate_gemini_image(config, compiled_prompt)
     image_url = result["image_url"]
     model_used = result["model_used"]
     is_fallback = result["is_fallback"]
@@ -67,8 +67,6 @@ async def generate_fibc_image(
         id=history_record.id,
         image_url=image_url,
         prompt=compiled_prompt,
-        exploded_image_url=result.get("exploded_image_url"),
-        exploded_prompt=result.get("exploded_prompt"),
         generation_time_sec=generation_sec,
         model_used=model_used,
         is_cached=False,

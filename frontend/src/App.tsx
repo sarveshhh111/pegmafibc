@@ -14,13 +14,10 @@ import { SummaryPanel } from './components/summary/SummaryPanel';
 
 import { DashboardView } from './components/views/DashboardView';
 import { HistoryView } from './components/views/HistoryView';
-import { TemplatesView } from './components/views/TemplatesView';
 import { SavedDesignsView } from './components/views/SavedDesignsView';
 import { AdminPromptLogsView } from './components/views/AdminPromptLogsView';
 import { SettingsView } from './components/views/SettingsView';
 import { HelpView } from './components/views/HelpView';
-
-import { ProductReferenceLibraryView } from './components/views/ProductReferenceLibraryView';
 
 const MainContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -34,13 +31,8 @@ const MainContent: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView />;
-      case 'references':
-        return <ProductReferenceLibraryView />;
       case 'history':
-      case 'favorites':
         return <HistoryView />;
-      case 'templates':
-        return <TemplatesView />;
       case 'saved':
         return <SavedDesignsView />;
       case 'admin':

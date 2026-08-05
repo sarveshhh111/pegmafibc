@@ -23,10 +23,7 @@ export const SidebarNav: React.FC = () => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     { id: 'configurator', label: 'CONFIGURATOR', icon: <Sliders className="w-4 h-4" /> },
     { id: 'dashboard', label: 'DASHBOARD', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'references', label: 'REFERENCE LIBRARY', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'history', label: 'HISTORY', icon: <History className="w-4 h-4" /> },
-    { id: 'templates', label: 'TEMPLATES', icon: <Grid className="w-4 h-4" /> },
-    { id: 'favorites', label: 'FAVORITES', icon: <Heart className="w-4 h-4" /> },
     { id: 'saved', label: 'MY PROJECTS', icon: <FolderCheck className="w-4 h-4" /> },
     { id: 'admin', label: 'PROMPT LOGS', icon: <Terminal className="w-4 h-4" /> },
     { id: 'settings', label: 'SETTINGS', icon: <Settings className="w-4 h-4" /> },

@@ -15,6 +15,16 @@ export interface FIBCBagConfig {
   siftProofing?: string;
   baffleType?: string;
   linerType?: string;
+  
+  // Extended 10-section options
+  linerRequired?: string; // 'Yes' | 'No' | ''
+  linerConstruction?: string;
+  linerMaterial?: string;
+
+  // Custom Logo Upload
+  logoImage?: string; // Base64 data URL or uploaded logo URL
+  logoFileName?: string;
+
   foodGrade?: boolean;
   unCertified?: boolean;
   baffle?: boolean;
@@ -28,8 +38,6 @@ export interface GenerationResponse {
   id?: number;
   image_url: string;
   prompt: string;
-  exploded_image_url?: string;
-  exploded_prompt?: string;
   generation_time_sec: number;
   model_used: string;
   is_cached?: boolean;
@@ -86,10 +94,7 @@ export interface ApiUsageStats {
 export type ActiveTab = 
   | 'configurator' 
   | 'dashboard' 
-  | 'references'
   | 'history' 
-  | 'templates' 
-  | 'favorites' 
   | 'saved' 
   | 'admin' 
   | 'settings' 

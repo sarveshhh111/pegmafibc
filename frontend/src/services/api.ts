@@ -9,7 +9,11 @@ import {
   ApiUsageStats 
 } from '../types';
 
-const API_BASE_URL = 'https://pegmafibc.onrender.com/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || (
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api'
+    : 'https://pegmafibc.onrender.com/api'
+);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -21,7 +25,7 @@ const apiClient = axios.create({
 
 export const generateBagImage = async (config: FIBCBagConfig, sessionId = "default"): Promise<GenerationResponse> => {
   try {
-    const targetUrl = `${API_BASE_URL.replace(/\/$/, '')}/generate`;
+    const targetUrl = `${API_BASE_URL}/generate`;
     console.log("[PEGMA API] Sending generation request to:", targetUrl);
 
     const response = await fetch(targetUrl, {

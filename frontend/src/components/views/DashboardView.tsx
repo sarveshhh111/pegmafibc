@@ -4,18 +4,16 @@ import { fetchApiStats, fetchTemplates } from '../../services/api';
 import { ApiUsageStats, PresetTemplate } from '../../types';
 import { 
   Sparkles, 
-  Layers, 
   Cpu, 
-  CheckCircle, 
   ArrowRight, 
   Sliders, 
-  Grid, 
+  History, 
   ShieldCheck, 
   Activity 
 } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
-  const { setActiveTab, setFullConfig, history } = useConfigurator();
+  const { setActiveTab, setFullConfig } = useConfigurator();
   const [stats, setStats] = useState<ApiUsageStats | null>(null);
   const [templates, setTemplates] = useState<PresetTemplate[]>([]);
 
@@ -35,10 +33,10 @@ export const DashboardView: React.FC = () => {
             <span>PEGMA INDUSTRIAL AI ENGINE</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-            FIBC Bag Specification & Gemini Visualizer
+            FIBC Bag Specification & Visualizer
           </h1>
           <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
-            Configure flexible intermediate bulk containers with millimeter accuracy. Generate high-fidelity 3D studio visual renders using Google Gemini Image API instantly.
+            Configure flexible intermediate bulk containers with millimeter accuracy. Generate high-fidelity 3D studio visual renders instantly.
           </p>
           <div className="pt-2 flex items-center space-x-3">
             <button
@@ -49,11 +47,11 @@ export const DashboardView: React.FC = () => {
               <span>Open Bag Configurator</span>
             </button>
             <button
-              onClick={() => setActiveTab('templates')}
+              onClick={() => setActiveTab('history')}
               className="flex items-center space-x-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-xs backdrop-blur-md transition"
             >
-              <Grid className="w-4 h-4" />
-              <span>Browse Preset Templates</span>
+              <History className="w-4 h-4" />
+              <span>View Generation History</span>
             </button>
           </div>
         </div>
@@ -63,61 +61,45 @@ export const DashboardView: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-soft space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Generations</span>
-            <Sparkles className="w-4 h-4 text-pegma-red" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">
-            {stats?.total_generations || history.length || 14}
-          </div>
-          <div className="text-[11px] text-slate-500">Processed across sessions</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Renders</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">{stats?.total_generations || 0}</div>
+          <div className="text-[11px] text-slate-500">Synthesized product images</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-soft space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Gemini API status</span>
-            <Cpu className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-pegma-success animate-ping" />
-            <span className="text-sm font-bold text-slate-900 dark:text-white">
-              {stats?.active_key ? "Live Gemini Key Active" : "Visualizer Engine Ready"}
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-500">Google Gemini Nano Banana</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">AI Call Requests</div>
+          <div className="text-2xl font-black text-pegma-red">{stats?.gemini_api_calls || 0}</div>
+          <div className="text-[11px] text-slate-500">Photorealistic generations</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-soft space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">ISO Certification</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">ISO 9001:2015</div>
-          <div className="text-[11px] text-slate-500">Global bulk packaging standards</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Vector Fallback</div>
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats?.fallback_generations || 0}</div>
+          <div className="text-[11px] text-slate-500">3D Vector fallback renders</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-soft space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">System Latency</span>
-            <Activity className="w-4 h-4 text-amber-500" />
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Engine Status</div>
+          <div className="text-base font-black text-slate-900 dark:text-white flex items-center space-x-1.5 pt-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-pegma-success animate-pulse"></span>
+            <span>{stats?.active_key ? 'Engine Active' : 'Procedural Ready'}</span>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">0.82s avg</div>
           <div className="text-[11px] text-slate-500">Fast visual response</div>
         </div>
 
       </div>
 
-      {/* Preset Templates Quick Load */}
+      {/* Preset Configurations Quick Load */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-            POPULAR FIBC TEMPLATES
+            POPULAR FIBC CONFIGURATIONS
           </h3>
           <button
-            onClick={() => setActiveTab('templates')}
+            onClick={() => setActiveTab('configurator')}
             className="text-xs font-bold text-pegma-red hover:underline flex items-center space-x-1"
           >
-            <span>View All Templates</span>
+            <span>Configure New Bag</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

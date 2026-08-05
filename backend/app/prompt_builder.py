@@ -2,139 +2,114 @@ from app.schemas import FIBCBagConfig
 
 def build_gemini_prompt(config: FIBCBagConfig) -> str:
     """
-    Ultra-accurate, high-impact prompt engine for Google Gemini API.
-    Handles every permutation & combination of FIBC bulk bag specifications with strict visual directives.
+    Crisp, punchy, to-the-point prompt generator for Google Gemini 2.5 Flash Image.
+    Forces strict visual adherence to attached reference PNG images.
     """
-    
-    # 1. Structural Construction Type
-    bag_type = (config.bagType or "").strip()
-    if not bag_type or bag_type.lower() in ["none", "standard"]:
-        bag_type_desc = "Standard U-Panel FIBC bulk bag construction"
-    elif "4-Panel" in bag_type:
-        bag_type_desc = "Heavy-duty 4-Panel FIBC bulk bag with crisp vertical corner seams creating a square cubic shape"
-    elif "Baffle" in bag_type:
-        bag_type_desc = "Baffle Bag (Q-Bag) with internal corner baffles preventing bulging, maintaining a perfect square form"
-    elif "Circular" in bag_type or "Tubular" in bag_type:
-        bag_type_desc = "Seamless circular tubular woven FIBC bulk bag without vertical side seams"
-    elif "Single Loop" in bag_type or "Double Loop" in bag_type:
-        bag_type_desc = f"{bag_type} FIBC bulk bag with continuous overhead lifting handle extending from the top opening"
-    else:
-        bag_type_desc = f"{bag_type} FIBC bulk bag construction"
+    parts = []
 
-    # 2. Fabric Color & GSM
+    # 1. Base Bag Type & Reference File Binding
+    b_type = (config.bagType or "U Panel").strip()
+    if "Net Baffle" in b_type:
+        parts.append("Bag Type: Net Baffle Bag (Q-Bag). Follow attached netbaffle.png reference for internal net-mesh corner baffles.")
+    elif "Baffle" in b_type or "Q-Bag" in b_type:
+        parts.append("Bag Type: Baffle Bag (Q-Bag). Follow attached baffle.png reference for internal fabric corner baffles with circular flow holes.")
+    elif "Food Grade" in b_type:
+        parts.append("Bag Type: Food Grade FIBC. Follow attached foodgrade.png reference for clean room finish.")
+    elif "UN Certified" in b_type:
+        parts.append("Bag Type: UN Certified FIBC. Follow attached uncertified.png reference.")
+    elif "4-Panel" in b_type or "4 Panel" in b_type:
+        parts.append("Bag Type: 4-Panel FIBC. Follow attached 4panel.png reference for 4 vertical edge seams.")
+    elif "Circular" in b_type or "Tubular" in b_type:
+        parts.append("Bag Type: Circular FIBC. Follow attached circular.png reference for tubular seamless body.")
+    elif "2 Panel" in b_type or "2-Panel" in b_type:
+        parts.append("Bag Type: 2-Panel FIBC. Follow attached u+2panel.png reference.")
+    elif "Asbestos" in b_type:
+        parts.append("Bag Type: Asbestos Plate Bag. Follow attached asbestos.png reference.")
+    elif "Drum" in b_type:
+        parts.append("Bag Type: Drum Bag. Follow attached drum.png reference.")
+    else:
+        parts.append(f"Bag Type: {b_type}. Follow attached upanel.png reference for U-Panel body.")
+
+    # 2. Capacity, Fabric & GSM
     color = (config.fabricColor or "White").strip()
-    if not color or color.lower() == "none":
-        color = "White"
     gsm = (config.gsm or "180 GSM").strip()
-    fabric_str = f"Fabric: High-tenacity {color} woven polypropylene ({gsm})."
+    capacity = (config.capacity or "1000 kg").strip()
+    parts.append(f"Spec: SWL {capacity} | {color} {gsm} woven polypropylene fabric.")
 
-    # 3. Webbing Lifting Loops (Color, Count & Type)
-    l_type = (config.loopType or "").strip()
-    l_color = (config.loopColor or "").strip()
+    # 3. Lifting Loop Configuration & Reference
+    l_type = (config.loopType or "Cross Corner").strip()
+    l_color = (config.loopColor or "Blue").strip().upper()
     
-    if not l_type or l_type.lower() == "none":
-        loop_str = "Overhead woven webbing lifting loops at top corners."
+    if "single loop" in l_type.lower() or "single" in l_type.lower():
+        parts.append(f"Loops: Single Loop ({l_color}). Follow attached singleloop.png reference for one continuous overhead arch over top center.")
+    elif "double loop" in l_type.lower() or "double" in l_type.lower():
+        parts.append(f"Loops: Double Loop ({l_color}). Follow attached doubleloop.png reference for two parallel continuous overhead arches.")
     else:
-        l_color_str = l_color.upper() if l_color and l_color.lower() != "none" else "matching"
-        loop_str = f"Four heavy-duty {l_color_str} woven webbing lifting loops attached in {l_type} style at top corners."
+        parts.append(f"Loops: Cross Corner ({l_color}). Follow attached crosscornerloop.png reference for 4 corner webbing loops.")
 
-    # 4. Top Feature / Closure Mechanism
-    top = (config.top or "").strip()
-    if not top or top.lower() in ["none", "open top"]:
-        top_str = "Top feature: Open hemmed top opening."
-    elif "Filling Spout" in top:
-        top_str = "Top feature: Cylindrical fabric filling spout tube centered on top base panel with drawstring tie."
-    elif "Duffle" in top:
-        top_str = "Top feature: Flexible duffle top skirt with red drawstring closure tie."
+    # 4. Top Opening & Reference
+    top = (config.top or "Duffle Top").strip()
+    if "Duffle" in top or "Skirt" in top:
+        parts.append("Top: Duffle Top. Follow attached duffletop.png reference for gathered skirt top.")
+    elif "Spout" in top or "Filling" in top:
+        parts.append("Top: Filling Spout. Follow attached fillingspout.png reference for cylindrical inlet spout.")
+    elif "Open" in top:
+        parts.append("Top: Open Top. Follow attached opentop.png reference.")
+    elif "Conical" in top:
+        parts.append("Top: Conical Top. Follow attached conicaltop.png reference.")
+    elif "Skirt" in top:
+        parts.append("Top: Skirt Top. Follow attached skirttop.png reference.")
     else:
-        top_str = f"Top feature: {top}."
+        parts.append(f"Top: {top}.")
 
-    # 5. Bottom Discharge Mechanism & Mid-Air Elevation Positioning
-    bottom = (config.bottom or "").strip()
-    if not bottom or bottom.lower() in ["none", "flat bottom", "flat plain base"]:
-        bottom_str = "Bottom feature: Solid flat closed base resting evenly."
-    elif "Spout" in bottom or "Discharge" in bottom:
-        bottom_str = (
-            "ELEVATION & BASE POSITIONING: The bag is suspended in mid-air by its top loops. "
-            "PROMINENT BOTTOM FEATURE: A cylindrical discharge spout tube hangs cleanly down from the EXACT CENTER BASE PANEL beneath the bag, tied with a drawstring cord."
-        )
+    # 5. Bottom Discharge & Reference
+    bottom = (config.bottom or "Discharge Spout").strip()
+    if "Spout" in bottom or "Discharge" in bottom:
+        parts.append("Bottom: Discharge Spout. Follow attached discharge spout.png reference (suspended bag base).")
+    elif "Flat" in bottom:
+        parts.append("Bottom: Flat Bottom. Follow attached flatbottom.png reference (wooden pallet resting base).")
+    elif "Conical" in bottom:
+        parts.append("Bottom: Conical Bottom. Follow attached conicalbottom.png reference.")
+    elif "Diaper" in bottom:
+        parts.append("Bottom: Diaper Bottom. Follow attached diaperbottom.png reference.")
     else:
-        bottom_str = f"Bottom feature: {bottom} mechanism."
+        parts.append(f"Bottom: {bottom}.")
 
-    # 6. Electrostatic Safety Classification
-    electro = (config.electrostaticType or "").strip()
+    # 6. Inner Liner Callout Arrow Directive
+    liner_req = (config.linerRequired or "Yes").strip()
+    if liner_req.lower() == "yes":
+        l_const = (config.linerConstruction or config.linerType or "Loose Liner").strip()
+        l_mat = (config.linerMaterial or "Standard PE").strip()
+        parts.append(f"Liner: {l_const} ({l_mat}). Draw callout arrow pointing to top opening labeled 'INNER BARRIER LINER'.")
+    else:
+        parts.append("Liner: None. Draw callout arrow pointing to top opening labeled 'INNER BARRIER LINER: None'.")
+
+    # 7. Seam Sift-Proofing Callout Arrow Directive
+    sift = (config.siftProofing or "Single Sift Proof").strip()
+    if sift.lower() in ["none"]:
+        parts.append("Sift-Proofing: Standard Stitching. Draw callout arrow pointing to side seam labeled 'SEAM SIFT-PROOFING'.")
+    else:
+        parts.append(f"Sift-Proofing: {sift}. Draw callout arrow pointing to felt cord side seam labeled 'SEAM SIFT-PROOFING'.")
+
+    # 8. Electrical Safety Technical Property Caption Directive
+    electro = (config.electrostaticType or "Type A").strip()
     if "Type C" in electro or "Conductive" in electro:
-        electro_str = "ELECTROSTATIC SAFETY: Interwoven grid of black carbon conductive thread lines with yellow grounding tabs at corner seams."
-    elif "Type D" in electro or "Dissipative" in electro:
-        electro_str = "ELECTROSTATIC SAFETY: Static dissipative fabric with visible anti-static yarns."
+        parts.append("Electrical: Conductive Type C (carbon grid). Include bottom caption box: 'ELECTRICAL SAFETY: CONDUCTIVE TYPE C (<10^8 Ω)'.")
     elif "Type B" in electro:
-        electro_str = "ELECTROSTATIC SAFETY: Type B breakdown voltage resistant polypropylene fabric."
+        parts.append("Electrical: Type B (breakdown <6kV). Include bottom caption box: 'ELECTRICAL SAFETY: TYPE B (<6kV)'.")
     else:
-        electro_str = ""
+        parts.append("Electrical: Type A (non-conductive). Include bottom caption box: 'ELECTRICAL SAFETY: TYPE A (>6kV)'.")
 
-    # 7. Inner Barrier Liner
-    liner = (config.linerType or "").strip()
-    if liner and liner.lower() not in ["none", "no liner"]:
-        liner_str = f"Liner: Fitted internal {liner} barrier."
+    # 9. Brand Logo Printing
+    print_text = (config.printing or "PEGMA").strip()
+    if config.logoImage:
+        logo_name = config.logoFileName or "Uploaded Logo"
+        parts.append(f"Logo: Print attached custom company logo ('{logo_name}') on front panel.")
     else:
-        liner_str = ""
+        parts.append(f"Logo: Print '{print_text}' logo on front panel.")
 
-    # 8. Printing & Logo Branding
-    print_text = (config.printing or "").strip()
-    print_color = (config.printingColor or "").strip()
-    if print_text and print_text.lower() not in ["none", "no printing", "unprinted"]:
-        color_spec = f"in bold {print_color} ink" if print_color and print_color.lower() != "none" else ""
-        print_str = f"LOGO BRANDING: Printed '{print_text}' logo {color_spec} centered on front face."
-    else:
-        print_str = "Surface: Clean unprinted fabric."
+    # 10. Studio Photography Style
+    parts.append("Style: Photorealistic 3D commercial studio photograph, clean studio lighting, high resolution.")
 
-    # 9. Extra ADDS & Accessories Specifications
-    accs = config.accessories or []
-    valid_accs = [a for a in accs if a and a.lower() != "none"]
-    acc_str = f"Special Features: {', '.join(valid_accs)}." if valid_accs else ""
-
-    # 10. Studio Photography Directives
-    capacity_str = f"{config.capacity} SWL" if config.capacity and config.capacity.lower() != "none" else "1000 kg SWL"
-    camera_str = "Commercial 3D studio product photograph, soft studio light, neutral light-gray background (#F8FAFC), 8k resolution, sharp detail focus."
-
-    # Compile Final Crisp Directives
-    components = [
-        f"Commercial studio product photograph of a {capacity_str} {bag_type_desc}.",
-        fabric_str,
-        electro_str,
-        liner_str,
-        loop_str,
-        top_str,
-        bottom_str,
-        print_str,
-        acc_str,
-        camera_str
-    ]
-
-    clean_prompt = " ".join([c.strip() for c in components if c.strip()])
-    return clean_prompt
-
-
-def build_exploded_view_prompt(config: FIBCBagConfig) -> str:
-    """
-    Crisp 3D CAD Exploded Assembly View prompt.
-    """
-    bag_type = config.bagType or "U-Panel"
-    loop_color = (config.loopColor or "Blue").upper()
-    fabric_color = config.fabricColor or "White"
-    liner = config.linerType or "PE Liner"
-    print_text = config.printing or "PEGMA"
-    bottom = config.bottom or "Discharge Spout"
-    top = config.top or "Duffle Top"
-    capacity = config.capacity or "1000 kg"
-
-    return (
-        f"Crisp 3D CAD exploded view diagram of a {capacity} {bag_type} FIBC bulk bag. "
-        f"Components separated vertically along central alignment axis: "
-        f"1. {top} skirt floating at top; "
-        f"2. {loop_color} webbing lifting loops detached at corners; "
-        f"3. Inner liner ({liner}) pulled out vertically; "
-        f"4. Main {fabric_color} PP woven body shell with '{print_text}' logo; "
-        f"5. Discharge spout mechanism ({bottom}) floating directly beneath center base panel. "
-        f"Style: Dark blueprint aesthetic (#0F172A), cyan callout guidelines (#38BDF8), isometric CAD render, 8k resolution."
-    )
+    # Join cleanly into crisp structured directive list
+    return " | ".join(parts)

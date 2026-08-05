@@ -17,10 +17,15 @@ class FIBCBagConfig(BaseModel):
     accessories: List[str] = Field(default_factory=lambda: ["PE Liner", "Document Pouch"], description="Specialized features/add-ons")
     
     # Extended product list attributes
-    electrostaticType: Optional[str] = "Type A (Standard)"
+    electrostaticType: Optional[str] = "Type A"
     siftProofing: Optional[str] = "Standard Stitching"
     baffleType: Optional[str] = "Standard (No Baffles)"
     linerType: Optional[str] = "Standard PE Liner"
+    linerRequired: Optional[str] = "Yes"
+    linerConstruction: Optional[str] = "Loose Liner"
+    linerMaterial: Optional[str] = "Standard PE"
+    logoImage: Optional[str] = None
+    logoFileName: Optional[str] = None
 
     # Flags derived or requested directly
     foodGrade: Optional[bool] = False
@@ -39,8 +44,6 @@ class GenerationResponse(BaseModel):
     id: Optional[int] = None
     image_url: str
     prompt: str
-    exploded_image_url: Optional[str] = None
-    exploded_prompt: Optional[str] = None
     generation_time_sec: float
     model_used: str
     is_cached: bool = False
