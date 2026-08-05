@@ -124,12 +124,12 @@ def build_gemini_prompt(config: FIBCBagConfig) -> str:
     if is_selected(config.printing):
         p_text = config.printing.strip()
         if p_text == "No Printing":
-            parts.append("Printing: Plain clean unprinted fabric body with no logo or text.")
-        elif config.logoImage:
-            logo_name = config.logoFileName or "Uploaded Logo"
-            parts.append(f"Logo: Print attached custom company logo ('{logo_name}') on front panel.")
+            parts.append("Printing: Plain clean unprinted woven polypropylene fabric body with no logo or text.")
+        elif config.logoImage and len(config.logoImage) > 10:
+            logo_name = config.logoFileName or "Uploaded Custom Logo"
+            parts.append(f"Brand Logo: Print attached custom company logo ('{logo_name}') prominently on the center front panel. Render with sharp vector precision, bold vibrant ink, high contrast, clean edges, and authentic screen-printed texture on the woven fabric.")
         else:
-            parts.append(f"Logo: Print '{p_text}' logo on front panel.")
+            parts.append(f"Brand Logo: Print official '{p_text}' brand logo photo prominently on the center front panel. Render in sharp, vibrant red and black vector screen-print ink, perfectly centered, high contrast, crisp lettering, and photorealistic commercial packaging finish.")
 
     # 10. Studio Photography Style
     parts.append("Style: Photorealistic 3D commercial studio photograph, clean studio lighting, high resolution.")

@@ -250,13 +250,13 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                     logo_bytes = base64.b64decode(b64str)
                     mime_type = "image/png" if "png" in header else "image/jpeg"
                     contents_payload.append(types.Part.from_bytes(data=logo_bytes, mime_type=mime_type))
-                    ref_directives.append("LOGO: Print attached custom company logo image strictly on the center front panel of the main bag body.")
+                    ref_directives.append("CUSTOM BRAND LOGO (Slot 1): Print this attached custom uploaded company logo image prominently on the center front panel of the main bag body with high contrast, sharp vector precision, bold ink, and clean edges.")
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Custom logo attached ({len(logo_bytes)} bytes)")
                 except Exception as logo_err:
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO] Decode error: {logo_err}")
             elif config.printing and config.printing.strip().lower() != "no printing":
                 if attach_image("logo.JPEG"):
-                    ref_directives.append("LOGO: Print attached logo.JPEG strictly on the center front panel of the main bag body.")
+                    ref_directives.append("OFFICIAL PEGMA BRAND LOGO (Slot 1): Print the exact red and black PEGMA brand logo shown in attached logo.JPEG prominently on the center front panel of the main bag body with high-contrast, sharp, photorealistic screen print ink.")
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached logo.JPEG")
 
             # 2. Slot 2: Main Bag Type & Construction Reference Image
