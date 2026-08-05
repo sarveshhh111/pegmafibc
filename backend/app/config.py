@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./pegma_fibc.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////tmp/pegma_fibc.db")
     
     # CORS origins container
     CORS_ORIGINS: Any = [

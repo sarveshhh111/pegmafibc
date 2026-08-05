@@ -14,8 +14,11 @@ from app.config import settings
 from app.database import engine, Base
 from app.routers import generator, history, templates, admin
 
-# Initialize DB tables
-Base.metadata.create_all(bind=engine)
+# Initialize DB tables safely
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as db_err:
+    print(f"[PEGMA DB INIT WARNING] {db_err}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
