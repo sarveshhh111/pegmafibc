@@ -9,24 +9,39 @@ router = APIRouter(prefix="", tags=["History & Favorites"])
 
 @router.get("/history", response_model=List[HistoryItemResponse])
 def get_generation_history(
-    session_id: Optional[str] = "default",
+    session_id: Optional[str] = None,
     search: Optional[str] = None,
     favorites_only: bool = False,
-    limit: int = Query(default=30, le=100),
+    limit: int = Query(default=50, le=200),
     db: Session = Depends(get_db)
 ):
-    query = db.query(BagConfigurationHistory)
-    
-    if session_id:
-        query = query.filter(BagConfigurationHistory.session_id == session_id)
-    if favorites_only:
-        query = query.filter(BagConfigurationHistory.is_favorite == True)
-    if search:
-        query = query.filter(
-            BagConfigurationHistory.generated_prompt.ilike(f"%{search}%")
-        )
+    import json
+    try:
+        query = db.query(BagConfigurationHistory)
+        
+        if session_id and session_id.lower() not in ["default", "all", "*", ""]:
+            query = query.filter(BagConfigurationHistory.session_id == session_id)
+        if favorites_only:
+            query = query.filter(BagConfigurationHistory.is_favorite == True)
+        if search:
+            query = query.filter(
+                BagConfigurationHistory.generated_prompt.ilike(f"%{search}%")
+            )
 
-    return query.order_by(BagConfigurationHistory.created_at.desc()).limit(limit).all()
+        items = query.order_by(BagConfigurationHistory.created_at.desc()).limit(limit).all()
+        
+        # Ensure config_json is parsed as dict if stored as JSON string
+        for item in items:
+            if isinstance(item.config_json, str):
+                try:
+                    item.config_json = json.loads(item.config_json)
+                except Exception:
+                    item.config_json = {}
+
+        return items
+    except Exception as err:
+        print(f"[PEGMA HISTORY ROUTE WARNING] {err}")
+        return []
 
 
 @router.post("/history/{history_id}/favorite", response_model=HistoryItemResponse)
