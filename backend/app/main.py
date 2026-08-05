@@ -56,6 +56,18 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/api/test-generate")
+def test_generate():
+    import traceback
+    from app.schemas import FIBCBagConfig
+    from app.gemini_service import generate_gemini_image
+    try:
+        cfg = FIBCBagConfig(bagType="Baffle Bag", capacity="1000 kg")
+        res = generate_gemini_image(cfg)
+        return {"success": True, "result": res}
+    except Exception as e:
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
 @app.get("/api/debug-env")
 def debug_env():
     import os
