@@ -244,6 +244,7 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                 return False
 
             # 1. Slot 1: Logo Reference Image
+            p_val = (config.printing or "PEGMA").strip().lower()
             if config.logoImage and "data:image" in config.logoImage:
                 try:
                     header, b64str = config.logoImage.split(",", 1)
@@ -254,7 +255,7 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Custom logo attached ({len(logo_bytes)} bytes)")
                 except Exception as logo_err:
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO] Decode error: {logo_err}")
-            elif config.printing and config.printing.strip().lower() != "no printing":
+            elif p_val != "no printing":
                 if attach_image("logo.JPEG"):
                     ref_directives.append("OFFICIAL PEGMA BRAND LOGO (Slot 1): Print the exact red and black PEGMA brand logo shown in attached logo.JPEG prominently on the center front panel of the main bag body with high-contrast, sharp, photorealistic screen print ink.")
                     print(f"[PEGMA MULTIMODAL AUDIT] Slot 1 [LOGO]: Attached logo.JPEG")
@@ -287,7 +288,7 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                 bag_ref_desc = "2-Panel bag construction"
             elif "asbestos" in b_raw:
                 bag_ref_file = "asbestos.png"
-                bag_ref_desc = "Asbestos plate disposal bag flat rectangular envelope geometry. Mandatory Rule: Preserve 100% identical structural geometry, flat panel dimensions, side binding seams, and top closure flap exactly as shown in attached asbestos.png without changing the structure whatsoever"
+                bag_ref_desc = "Asbestos plate disposal bag flat rectangular envelope geometry. MANDATORY HEIGHT CONSTRAINT: The height, aspect ratio, flat panel geometry, side-edge binding seams, and top closure flap MUST remain 100% IDENTICAL to attached asbestos.png reference image without increasing or warping height or structure"
             elif "drum" in b_raw:
                 bag_ref_file = "drum.png"
                 bag_ref_desc = "Drum bag cylindrical design"

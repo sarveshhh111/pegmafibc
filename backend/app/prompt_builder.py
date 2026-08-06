@@ -33,7 +33,7 @@ def build_gemini_prompt(config: FIBCBagConfig) -> str:
         elif "2 Panel" in b_type or "2-Panel" in b_type:
             parts.append("Bag Type: 2-Panel FIBC. Follow attached u+2panel.png reference.")
         elif "Asbestos" in b_type:
-            parts.append("Bag Type: Asbestos Plate Disposal Bag. STRICT MANDATORY GEOMETRY RULE: The product rendering MUST preserve 100% identical structural geometry, flat rectangular container envelope dimensions, side-edge binding seams, and top closure flap exactly as shown in the attached asbestos.png reference image without changing or warping the structure whatsoever.")
+            parts.append("Bag Type: Asbestos Plate Disposal Bag. STRICT MANDATORY HEIGHT & GEOMETRY CONSTRAINT: The product rendering MUST preserve 100% identical height, aspect ratio, low-profile flat rectangular container envelope dimensions, side-edge binding seams, and top closure flap exactly as shown in the attached asbestos.png reference image. Do NOT alter or increase the height, depth, flat panel geometry, or top flap closure whatsoever.")
         elif "Drum" in b_type:
             parts.append("Bag Type: Drum Bag. Follow attached drum.png reference.")
         else:
@@ -121,15 +121,14 @@ def build_gemini_prompt(config: FIBCBagConfig) -> str:
             parts.append(f"Electrical: {electro}.")
 
     # 9. Brand Logo Printing
-    if is_selected(config.printing):
-        p_text = config.printing.strip()
-        if p_text == "No Printing":
-            parts.append("Printing: Plain clean unprinted woven polypropylene fabric body with no logo or text.")
-        elif config.logoImage and len(config.logoImage) > 10:
-            logo_name = config.logoFileName or "Uploaded Custom Logo"
-            parts.append(f"Brand Logo: Print attached custom company logo ('{logo_name}') prominently on the center front panel. Render with sharp vector precision, bold vibrant ink, high contrast, clean edges, and authentic screen-printed texture on the woven fabric.")
-        else:
-            parts.append(f"Brand Logo: Print official '{p_text}' brand logo photo prominently on the center front panel. Render in sharp, vibrant red and black vector screen-print ink, perfectly centered, high contrast, crisp lettering, and photorealistic commercial packaging finish.")
+    p_text = (config.printing or "PEGMA").strip()
+    if p_text.lower() == "no printing":
+        parts.append("Printing: Plain clean unprinted woven polypropylene fabric body with no logo or text.")
+    elif config.logoImage and len(config.logoImage) > 10:
+        logo_name = config.logoFileName or "Uploaded Custom Logo"
+        parts.append(f"MANDATORY BRAND LOGO: Print attached custom company logo ('{logo_name}') prominently on the center front panel. Render with sharp vector precision, bold vibrant ink, high contrast, clean edges, and authentic screen-printed texture on the woven fabric.")
+    else:
+        parts.append(f"MANDATORY BRAND LOGO: Print official '{p_text}' brand logo (from attached logo.JPEG) prominently on the center front panel. Render in sharp, vibrant red and black vector screen-print ink, perfectly centered, high contrast, crisp lettering, and photorealistic commercial packaging finish.")
 
     # 10. Studio Photography Style
     parts.append("Style: Photorealistic 3D commercial studio photograph, clean studio lighting, high resolution.")
