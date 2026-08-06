@@ -33,7 +33,7 @@ def build_gemini_prompt(config: FIBCBagConfig) -> str:
         elif "2 Panel" in b_type or "2-Panel" in b_type:
             parts.append("Bag Type: 2-Panel FIBC. Follow attached u+2panel.png reference.")
         elif "Asbestos" in b_type:
-            parts.append("Bag Type: Asbestos Plate Disposal Bag. STRICT MANDATORY HEIGHT & GEOMETRY CONSTRAINT: The product rendering MUST preserve 100% identical height, aspect ratio, low-profile flat rectangular container envelope dimensions, side-edge binding seams, and top closure flap exactly as shown in the attached asbestos.png reference image. Do NOT alter or increase the height, depth, flat panel geometry, or top flap closure whatsoever.")
+            parts.append("Bag Type: Asbestos Plate Disposal Container Bag. CRITICAL CONTAINER GEOMETRY OVERRIDE: This is a LOW-PROFILE FLAT HORIZONTAL RECTANGULAR CONTAINER ENVELOPE laying flat horizontally (long flat rectangular container for asbestos sheets, exactly like attached asbestos.png). DO NOT render a tall vertical cube bag. DO NOT place it on a wooden pallet. The height MUST be extremely low (flat horizontal envelope), with flat bound side seams, top flap closure extending along the long top face, and flat horizontal aspect ratio, 100% matching attached asbestos.png.")
         elif "Drum" in b_type:
             parts.append("Bag Type: Drum Bag. Follow attached drum.png reference.")
         else:
