@@ -221,7 +221,9 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
             
             models_to_try = [
                 "gemini-2.5-flash-image",
-                "gemini-3.1-flash-image"
+                "gemini-3.1-flash-image",
+                "gemini-2.0-flash-exp",
+                "imagen-3.0-generate-002"
             ]
 
             contents_payload = []
