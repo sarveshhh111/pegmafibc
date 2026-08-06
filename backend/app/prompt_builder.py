@@ -33,7 +33,7 @@ def build_gemini_prompt(config: FIBCBagConfig) -> str:
         elif "2 Panel" in b_type or "2-Panel" in b_type:
             parts.append("Bag Type: 2-Panel FIBC. Follow attached u+2panel.png reference.")
         elif "Asbestos" in b_type:
-            parts.append("Bag Type: Asbestos Plate Bag. Follow attached asbestos.png reference.")
+            parts.append("Bag Type: Asbestos Plate Disposal Bag. STRICT MANDATORY GEOMETRY RULE: The product rendering MUST preserve 100% identical structural geometry, flat rectangular container envelope dimensions, side-edge binding seams, and top closure flap exactly as shown in the attached asbestos.png reference image without changing or warping the structure whatsoever.")
         elif "Drum" in b_type:
             parts.append("Bag Type: Drum Bag. Follow attached drum.png reference.")
         else:

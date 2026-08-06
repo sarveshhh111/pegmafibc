@@ -287,7 +287,7 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                 bag_ref_desc = "2-Panel bag construction"
             elif "asbestos" in b_raw:
                 bag_ref_file = "asbestos.png"
-                bag_ref_desc = "Asbestos plate disposal bag"
+                bag_ref_desc = "Asbestos plate disposal bag flat rectangular envelope geometry. Mandatory Rule: Preserve 100% identical structural geometry, flat panel dimensions, side binding seams, and top closure flap exactly as shown in attached asbestos.png without changing the structure whatsoever"
             elif "drum" in b_raw:
                 bag_ref_file = "drum.png"
                 bag_ref_desc = "Drum bag cylindrical design"

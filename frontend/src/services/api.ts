@@ -66,7 +66,11 @@ export const fetchHistory = async (search?: string, favoritesOnly = false): Prom
     if (search) params.search = search;
     if (favoritesOnly) params.favorites_only = true;
     const response = await apiClient.get<HistoryItem[]>('/history', { params });
-    return response.data;
+    const items = Array.isArray(response.data) ? response.data : [];
+    return items.map(item => ({
+      ...item,
+      config_json: typeof item.config_json === 'string' ? JSON.parse(item.config_json) : (item.config_json || {})
+    }));
   } catch (error) {
     console.warn("Using local storage history fallback", error);
     const local = localStorage.getItem('pegma_history');

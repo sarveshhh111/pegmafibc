@@ -17,10 +17,16 @@ export const HistoryView: React.FC = () => {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const filteredHistory = history.filter(item => {
-    const promptMatch = item.generated_prompt?.toLowerCase().includes(searchTerm.toLowerCase());
-    const typeMatch = item.config_json?.bagType?.toLowerCase().includes(searchTerm.toLowerCase());
-    const favMatch = favoritesOnly ? item.is_favorite : true;
-    return (promptMatch || typeMatch) && favMatch;
+    const term = searchTerm.trim().toLowerCase();
+    if (!term && !favoritesOnly) return true;
+    
+    const promptMatch = term ? item.generated_prompt?.toLowerCase().includes(term) : true;
+    const typeMatch = (term && typeof item.config_json === 'object' && item.config_json?.bagType) 
+      ? item.config_json.bagType.toLowerCase().includes(term) 
+      : false;
+    const favMatch = favoritesOnly ? Boolean(item.is_favorite) : true;
+    
+    return (term ? (promptMatch || typeMatch) : true) && favMatch;
   });
 
   const handleClearAll = async () => {
