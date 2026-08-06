@@ -290,7 +290,7 @@ def generate_gemini_image(config: FIBCBagConfig, custom_prompt: str = None) -> d
                 bag_ref_desc = "2-Panel bag construction"
             elif "asbestos" in b_raw:
                 bag_ref_file = "asbestos.png"
-                bag_ref_desc = "Asbestos Plate Disposal Container Bag. CRITICAL CONTAINER SHAPE: Low-profile flat horizontal rectangular envelope container laying flat on the studio floor (long flat horizontal container for sheet plates, exactly like attached asbestos.png). DO NOT draw a standing vertical cube bag. DO NOT place on a wooden pallet. Height MUST remain extremely low and flat, with flat bound side seams and top flap closure."
+                bag_ref_desc = "Asbestos Plate Disposal Container Box. 3D CONTAINER BOX SHAPE: Low-profile 3D rectangular container box with structured ~20-30 cm height/thickness and vertical side walls laying flat horizontally on studio floor (long 3D rectangular box for sheet plates, 100% matching attached asbestos.png). It MUST have distinct 3D box height and side wall depth (not 0 height / paper flat). DO NOT draw a tall 1-meter vertical cube bag. DO NOT render paper-flat sheet."
             elif "drum" in b_raw:
                 bag_ref_file = "drum.png"
                 bag_ref_desc = "Drum bag cylindrical design"
