@@ -33,7 +33,7 @@ def build_gemini_prompt(config: FIBCBagConfig) -> str:
         elif "2 Panel" in b_type or "2-Panel" in b_type:
             parts.append("Bag Type: 2-Panel FIBC. Follow attached u+2panel.png reference.")
         elif "Asbestos" in b_type:
-            parts.append("Bag Type: Asbestos Plate Disposal Container Box. 3D CONTAINER GEOMETRY: This is a LOW-PROFILE 3D RECTANGULAR CONTAINER BOX (low height container box with ~20-30 cm structured vertical side walls, long rectangular horizontal proportions, exactly like attached asbestos.png reference image). It has noticeable 3D height and thickness (not paper flat), rectangular box shape, flat bound side seams, and full top flap closure. DO NOT render a tall 1-meter vertical cube bag. DO NOT render a completely flat 2D sheet with 0 height. It MUST have a distinct low-profile 3D rectangular box volume with ~20-30 cm height, matching attached asbestos.png.")
+            parts.append("Bag Type: Asbestos Plate Disposal Bag. FLEXIBLE FABRIC FIBC BAG SHAPE: Low-profile flexible woven polypropylene FIBC bag (half the height, ~10-15 cm low height, soft stitched fabric seams, natural woven PP fabric texture and subtle creases, long rectangular horizontal proportions, 100% matching attached asbestos.png reference image). It MUST look like a flexible woven polypropylene fabric bag (NOT a rigid cardboard box or hard chest). Height is low (~10-15 cm), laying flat horizontally on the floor, with soft woven PP fabric finish, top flap closure, and lifting loops.")
         elif "Drum" in b_type:
             parts.append("Bag Type: Drum Bag. Follow attached drum.png reference.")
         else:
